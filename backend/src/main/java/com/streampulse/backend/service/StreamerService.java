@@ -56,4 +56,19 @@ public class StreamerService {
                 .toList();
     }
 
+    public StreamerResponseDTO updateStreamer(Long id, StreamerRequestDTO streamerRequestDTO) {
+        Streamer streamer = streamerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방송자 입니다."));
+
+        streamer.update(streamerRequestDTO);
+
+        Streamer updatedStreamer = streamerRepository.save(streamer);
+
+        return StreamerResponseDTO.builder()
+                .id(updatedStreamer.getId())
+                .channelId(updatedStreamer.getChannelId())
+                .nickname(updatedStreamer.getNickname())
+                .build();
+    }
+
 }

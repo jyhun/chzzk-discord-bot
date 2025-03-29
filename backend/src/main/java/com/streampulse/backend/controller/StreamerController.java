@@ -34,4 +34,13 @@ public class StreamerController {
         return ResponseEntity.ok(streamerResponseDTOList);
     }
 
+    @PutMapping("/{id}")
+    public ResponseEntity<StreamerResponseDTO> updateStreamer(
+            @PathVariable Long id,
+            @RequestBody StreamerRequestDTO streamerRequestDTO
+    ) {
+        StreamerResponseDTO streamerResponseDTO = streamerService.updateStreamer(id, streamerRequestDTO);
+        return ResponseEntity.ok(streamerResponseDTO);
+    }
+
 }

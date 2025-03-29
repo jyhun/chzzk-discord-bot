@@ -81,4 +81,26 @@ class  StreamerServiceTest {
 
     }
 
+    @Test
+    void updateStreamer_수정_성공() {
+        // given
+        StreamerRequestDTO originalRequestDTO = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
+        StreamerResponseDTO savedResponseDTO = streamerService.registerStreamer(originalRequestDTO);
+
+        StreamerRequestDTO updatedRequestDTO = new StreamerRequestDTO("방송자 채널 2", "방송자 닉네임 2");
+
+        // when
+        StreamerResponseDTO updatedResponseDTO = streamerService.updateStreamer(savedResponseDTO.getId(), updatedRequestDTO);
+
+        // then
+        assertThat(updatedResponseDTO.getId()).isEqualTo(savedResponseDTO.getId());
+        assertThat(updatedResponseDTO.getChannelId()).isEqualTo(updatedRequestDTO.getChannelId());
+        assertThat(updatedResponseDTO.getNickname()).isEqualTo(updatedRequestDTO.getNickname());
+
+        Streamer streamer = streamerRepository.findById(savedResponseDTO.getId()).orElseThrow();
+        assertThat(streamer.getChannelId()).isEqualTo(updatedRequestDTO.getChannelId());
+        assertThat(streamer.getNickname()).isEqualTo(updatedRequestDTO.getNickname());
+
+    }
+
 }

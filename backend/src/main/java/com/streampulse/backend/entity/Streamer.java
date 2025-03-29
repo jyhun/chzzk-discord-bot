@@ -1,5 +1,6 @@
 package com.streampulse.backend.entity;
 
+import com.streampulse.backend.dto.StreamerRequestDTO;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -18,4 +19,12 @@ public class Streamer {
 
     private String nickname;
 
+    public void update(StreamerRequestDTO streamerRequestDTO) {
+        if(streamerRequestDTO.getChannelId() != null) {
+            this.channelId = streamerRequestDTO.getChannelId();
+        }
+        if(streamerRequestDTO.getNickname() != null) {
+            this.nickname = streamerRequestDTO.getNickname();
+        }
+    }
 }
