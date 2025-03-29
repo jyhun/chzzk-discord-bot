@@ -31,4 +31,16 @@ public class StreamerService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public StreamerResponseDTO getStreamerByChannelId(String channelId) {
+        Streamer streamer = streamerRepository.findByChannelId(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채널 ID의 방송자를 찾을 수 없습니다."));
+
+        return StreamerResponseDTO.builder()
+                .id(streamer.getId())
+                .channelId(streamer.getChannelId())
+                .nickname(streamer.getNickname())
+                .build();
+    }
+
 }
