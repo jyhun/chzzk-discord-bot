@@ -11,9 +11,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
 @Transactional
@@ -27,7 +29,7 @@ class  StreamerServiceTest {
     private StreamerRepository streamerRepository;
 
     @Test
-    void registerStreamer_등록_성공() {
+    void registerStreamer_성공() {
         // given
         StreamerRequestDTO streamerRequestDTO = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
 
@@ -41,7 +43,7 @@ class  StreamerServiceTest {
     }
 
     @Test
-    void getStreamerByChannelId_조회_성공() {
+    void getStreamerByChannelId_성공() {
         // given
         StreamerRequestDTO streamerRequestDTO = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
         StreamerResponseDTO savedDTO = streamerService.registerStreamer(streamerRequestDTO);
@@ -65,7 +67,7 @@ class  StreamerServiceTest {
     }
 
     @Test
-    void getAllStreamers_조회_성공() {
+    void getAllStreamers_성공() {
         // given
         StreamerRequestDTO streamerRequestDTO1 = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
         StreamerRequestDTO streamerRequestDTO2 = new StreamerRequestDTO("방송자 채널 2", "방송자 닉네임 2");
@@ -82,7 +84,7 @@ class  StreamerServiceTest {
     }
 
     @Test
-    void updateStreamer_수정_성공() {
+    void updateStreamer_성공() {
         // given
         StreamerRequestDTO originalRequestDTO = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
         StreamerResponseDTO savedResponseDTO = streamerService.registerStreamer(originalRequestDTO);
@@ -101,6 +103,31 @@ class  StreamerServiceTest {
         assertThat(streamer.getChannelId()).isEqualTo(updatedRequestDTO.getChannelId());
         assertThat(streamer.getNickname()).isEqualTo(updatedRequestDTO.getNickname());
 
+    }
+
+    @Test
+    void deleteStreamer_성공() {
+        // given
+        StreamerRequestDTO streamerRequestDTO = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
+        StreamerResponseDTO streamerResponseDTO = streamerService.registerStreamer(streamerRequestDTO);
+
+        // when
+        streamerService.deleteStreamer(streamerResponseDTO.getId());
+
+        // then
+        Optional<Streamer> deleted = streamerRepository.findById(streamerResponseDTO.getId());
+        assertThat(deleted).isNotPresent();
+    }
+
+    @Test
+    void deleteStreamer_존재하지않음_예외발생() {
+        // given
+        Long nonExistentStreamerId = 1L;
+
+        // when & then
+        assertThrows(IllegalArgumentException.class, () ->
+                streamerService.deleteStreamer(nonExistentStreamerId)
+        );
     }
 
 }

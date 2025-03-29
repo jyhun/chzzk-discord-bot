@@ -71,4 +71,10 @@ public class StreamerService {
                 .build();
     }
 
+    public void deleteStreamer(Long id) {
+        Streamer streamer = streamerRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 방송자 입니다."));
+        streamerRepository.delete(streamer);
+    }
+
 }

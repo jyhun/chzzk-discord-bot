@@ -43,4 +43,10 @@ public class StreamerController {
         return ResponseEntity.ok(streamerResponseDTO);
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteStreamer(@PathVariable Long id) {
+        streamerService.deleteStreamer(id);
+        return ResponseEntity.noContent().build();
+    }
+
 }
