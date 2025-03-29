@@ -10,6 +10,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -60,6 +62,23 @@ class  StreamerServiceTest {
         assertThatThrownBy(() -> streamerService.getStreamerByChannelId("방송자 채널 x"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("해당 채널 ID의 방송자를 찾을 수 없습니다.");
+    }
+
+    @Test
+    void getAllStreamers_조회_성공() {
+        // given
+        StreamerRequestDTO streamerRequestDTO1 = new StreamerRequestDTO("방송자 채널 1", "방송자 닉네임 1");
+        StreamerRequestDTO streamerRequestDTO2 = new StreamerRequestDTO("방송자 채널 2", "방송자 닉네임 2");
+
+        streamerService.registerStreamer(streamerRequestDTO1);
+        streamerService.registerStreamer(streamerRequestDTO2);
+
+        // when
+        List<StreamerResponseDTO> streamerResponseDTOList = streamerService.getAllStreamers();
+
+        // then
+        assertThat(streamerResponseDTOList.size()).isEqualTo(2);
+
     }
 
 }

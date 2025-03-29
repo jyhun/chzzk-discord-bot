@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/streamers")
 @RequiredArgsConstructor
@@ -24,6 +26,12 @@ public class StreamerController {
     public ResponseEntity<StreamerResponseDTO> getStreamerByChannelId(@PathVariable String channelId) {
         StreamerResponseDTO streamerResponseDTO = streamerService.getStreamerByChannelId(channelId);
         return ResponseEntity.ok(streamerResponseDTO);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<StreamerResponseDTO>> getAllStreamers() {
+        List<StreamerResponseDTO> streamerResponseDTOList = streamerService.getAllStreamers();
+        return ResponseEntity.ok(streamerResponseDTOList);
     }
 
 }

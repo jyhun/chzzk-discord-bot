@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 
 @Service
 @Transactional
@@ -41,6 +43,17 @@ public class StreamerService {
                 .channelId(streamer.getChannelId())
                 .nickname(streamer.getNickname())
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StreamerResponseDTO> getAllStreamers() {
+         return streamerRepository.findAll().stream()
+                .map(streamer -> StreamerResponseDTO.builder()
+                        .id(streamer.getId())
+                        .channelId(streamer.getChannelId())
+                        .nickname(streamer.getNickname())
+                        .build())
+                .toList();
     }
 
 }
