@@ -56,4 +56,18 @@ public class StreamSessionService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public StreamSessionResponseDTO getSessionById(Long id) {
+        StreamSession streamSession = streamSessionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("해당 ID의 방송 세션을 찾을 수 없습니다."));
+
+        return StreamSessionResponseDTO.builder()
+                .id(streamSession.getId())
+                .channelId(streamSession.getStreamer().getChannelId())
+                .title(streamSession.getTitle())
+                .startedAt(streamSession.getStartedAt())
+                .endedAt(streamSession.getEndedAt())
+                .build();
+    }
+
 }

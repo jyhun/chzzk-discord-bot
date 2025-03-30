@@ -26,4 +26,10 @@ public class StreamSessionController {
         return ResponseEntity.ok(streamSessionResponseDTO);
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<StreamSessionResponseDTO> getStreamSession(@PathVariable Long id) {
+        StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.getSessionById(id);
+        return ResponseEntity.ok(streamSessionResponseDTO);
+    }
+
 }
