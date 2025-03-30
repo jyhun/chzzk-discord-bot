@@ -14,6 +14,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -61,6 +63,30 @@ class StreamMetricsServiceTest {
         assertThat(streamMetricsResponseDTO.getViewerCount()).isEqualTo(100);
         assertThat(streamMetricsResponseDTO.getCollectedAt()).isNotNull();
 
+    }
+
+    @Test
+    void getMetrics_성공() {
+        // given
+        Streamer streamer = Streamer.builder()
+                .channelId("방송자 채널 1")
+                .nickname("방송자 닉네임 1")
+                .build();
+
+        streamerRepository.save(streamer);
+
+        StreamSessionRequestDTO streamSessionRequestDTO = new StreamSessionRequestDTO("방송자 채널 1", "방송자 제목 1");
+        StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.startSession(streamSessionRequestDTO);
+
+        StreamMetricsRequestDTO streamMetricsRequestDTO1 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 10, 100);
+        StreamMetricsRequestDTO streamMetricsRequestDTO2 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 20, 200);
+
+        StreamMetricsResponseDTO streamMetricsResponseDTO1 = streamMetricsService.saveMetrics(streamMetricsRequestDTO1);
+        StreamMetricsResponseDTO streamMetricsResponseDTO2 = streamMetricsService.saveMetrics(streamMetricsRequestDTO2);
+        // when
+        List<StreamMetricsResponseDTO> streamMetricsResponseDTOList = streamMetricsService.getStreamMetrics(streamSessionResponseDTO.getId());
+        // then
+        assertThat(streamMetricsResponseDTOList.size()).isEqualTo(2);
     }
 
 }
