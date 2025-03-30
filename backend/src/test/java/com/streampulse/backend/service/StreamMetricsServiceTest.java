@@ -6,11 +6,14 @@ import com.streampulse.backend.dto.StreamSessionRequestDTO;
 import com.streampulse.backend.dto.StreamSessionResponseDTO;
 import com.streampulse.backend.entity.Highlight;
 import com.streampulse.backend.entity.Streamer;
+import com.streampulse.backend.infra.DiscordNotifier;
 import com.streampulse.backend.repository.HighlightRepository;
 import com.streampulse.backend.repository.StreamerRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +37,9 @@ class StreamMetricsServiceTest {
 
     @Autowired
     private HighlightRepository highlightRepository;
+
+    @MockBean
+    private DiscordNotifier discordNotifier;
 
     @Test
     void saveMetrics_성공() {
@@ -110,6 +116,8 @@ class StreamMetricsServiceTest {
 
         // then
         assertThat(highlightList.size()).isEqualTo(1);
+
+        Mockito.verify(discordNotifier, Mockito.atLeastOnce()).sendMessage(Mockito.anyString());
 
     }
 

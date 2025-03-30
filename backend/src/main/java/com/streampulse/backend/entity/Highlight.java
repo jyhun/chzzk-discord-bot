@@ -16,7 +16,7 @@ public class Highlight {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     private StreamSession session;
 
     private LocalDateTime detectedAt;

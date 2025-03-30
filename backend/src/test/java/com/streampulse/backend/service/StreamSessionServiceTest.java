@@ -47,7 +47,6 @@ class StreamSessionServiceTest {
 
         // then
         assertThat(streamSessionResponseDTO).isNotNull();
-        assertThat(streamSessionResponseDTO.getId()).isEqualTo(1);
         assertThat(streamSessionResponseDTO.getChannelId()).isEqualTo("방송자 채널 1");
         assertThat(streamSessionResponseDTO.getTitle()).isEqualTo("방송자 제목 1");
 

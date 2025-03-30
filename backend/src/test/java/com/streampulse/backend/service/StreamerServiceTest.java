@@ -122,7 +122,7 @@ class  StreamerServiceTest {
     @Test
     void deleteStreamer_존재하지않음_예외발생() {
         // given
-        Long nonExistentStreamerId = 1L;
+        Long nonExistentStreamerId = 999L;
 
         // when & then
         assertThrows(IllegalArgumentException.class, () ->
