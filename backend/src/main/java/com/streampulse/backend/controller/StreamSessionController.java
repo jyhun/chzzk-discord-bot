@@ -5,10 +5,7 @@ import com.streampulse.backend.dto.StreamSessionResponseDTO;
 import com.streampulse.backend.service.StreamSessionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/stream-sessions")
@@ -20,6 +17,12 @@ public class StreamSessionController {
     @PostMapping("/start")
     public ResponseEntity<StreamSessionResponseDTO> startStreamSession(@RequestBody StreamSessionRequestDTO streamSessionRequestDTO) {
         StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.startSession(streamSessionRequestDTO);
+        return ResponseEntity.ok(streamSessionResponseDTO);
+    }
+
+    @PostMapping("/end/{channelId}")
+    public ResponseEntity<StreamSessionResponseDTO> endStreamSession(@PathVariable String channelId) {
+        StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.endSession(channelId);
         return ResponseEntity.ok(streamSessionResponseDTO);
     }
 

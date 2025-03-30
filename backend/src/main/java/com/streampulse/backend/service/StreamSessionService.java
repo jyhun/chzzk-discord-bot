@@ -40,4 +40,20 @@ public class StreamSessionService {
                 .build();
     }
 
+    public StreamSessionResponseDTO endSession(String channelId) {
+        StreamSession streamSession = streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(channelId)
+                .orElseThrow(() -> new IllegalArgumentException("해당 채널 ID의 방송 세션을 찾을 수 없습니다."));
+
+        streamSession.updateEndedAt();
+        streamSessionRepository.save(streamSession);
+
+        return StreamSessionResponseDTO.builder()
+                .id(streamSession.getId())
+                .channelId(channelId)
+                .title(streamSession.getTitle())
+                .startedAt(streamSession.getStartedAt())
+                .endedAt(streamSession.getEndedAt())
+                .build();
+    }
+
 }

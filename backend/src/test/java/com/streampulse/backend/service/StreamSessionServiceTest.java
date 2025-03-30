@@ -57,4 +57,28 @@ class StreamSessionServiceTest {
 
     }
 
+    @Test
+    void endSession_성공() {
+        // given
+        Streamer streamer = Streamer.builder()
+                .channelId("방송자 채널 1")
+                .nickname("방송자 닉네임 1")
+                .build();
+
+        streamerRepository.save(streamer);
+        StreamSessionRequestDTO streamSessionRequestDTO = new StreamSessionRequestDTO("방송자 채널 1", "방송자 제목 1");
+
+        // when
+        StreamSessionResponseDTO startSessionResponseDTO = streamSessionService.startSession(streamSessionRequestDTO);
+        StreamSessionResponseDTO endSessionResponseDTO = streamSessionService.endSession(streamer.getChannelId());
+
+        // then
+        assertThat(startSessionResponseDTO.getId()).isEqualTo(endSessionResponseDTO.getId());
+        assertThat(startSessionResponseDTO.getChannelId()).isEqualTo(endSessionResponseDTO.getChannelId());
+        assertThat(startSessionResponseDTO.getTitle()).isEqualTo(endSessionResponseDTO.getTitle());
+        assertThat(startSessionResponseDTO.getStartedAt()).isEqualTo(endSessionResponseDTO.getStartedAt());
+        assertThat(endSessionResponseDTO.getEndedAt()).isNotNull();
+
+    }
+
 }

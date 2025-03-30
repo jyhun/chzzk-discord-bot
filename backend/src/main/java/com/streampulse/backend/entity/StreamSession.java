@@ -26,4 +26,9 @@ public class StreamSession {
     private LocalDateTime endedAt;
 
 
+    public void updateEndedAt() {
+        if (endedAt == null) {
+            this.endedAt = LocalDateTime.now();
+        }
+    }
 }
