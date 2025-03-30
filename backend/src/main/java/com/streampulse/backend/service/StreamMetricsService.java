@@ -20,6 +20,7 @@ public class StreamMetricsService {
 
     private final StreamMetricsRepository streamMetricsRepository;
     private final StreamSessionRepository streamSessionRepository;
+    private final HighlightService highlightService;
 
     public StreamMetricsResponseDTO saveMetrics(StreamMetricsRequestDTO streamMetricsRequestDTO) {
         StreamSession streamSession = streamSessionRepository.findById(streamMetricsRequestDTO.getSessionId())
@@ -33,6 +34,8 @@ public class StreamMetricsService {
                 .build();
 
         StreamMetrics savedStreamMetrics = streamMetricsRepository.save(streamMetrics);
+
+        highlightService.detectAndSaveHighlight(streamSession.getId());
 
         return StreamMetricsResponseDTO.builder()
                 .id(savedStreamMetrics.getId())

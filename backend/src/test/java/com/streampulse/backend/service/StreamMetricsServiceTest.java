@@ -4,9 +4,9 @@ import com.streampulse.backend.dto.StreamMetricsRequestDTO;
 import com.streampulse.backend.dto.StreamMetricsResponseDTO;
 import com.streampulse.backend.dto.StreamSessionRequestDTO;
 import com.streampulse.backend.dto.StreamSessionResponseDTO;
+import com.streampulse.backend.entity.Highlight;
 import com.streampulse.backend.entity.Streamer;
-import com.streampulse.backend.repository.StreamMetricsRepository;
-import com.streampulse.backend.repository.StreamSessionRepository;
+import com.streampulse.backend.repository.HighlightRepository;
 import com.streampulse.backend.repository.StreamerRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,16 +27,13 @@ class StreamMetricsServiceTest {
     private StreamSessionService streamSessionService;
 
     @Autowired
-    private StreamSessionRepository streamSessionRepository;
-
-    @Autowired
     private StreamerRepository streamerRepository;
 
     @Autowired
     private StreamMetricsService streamMetricsService;
 
     @Autowired
-    private StreamMetricsRepository streamMetricsRepository;
+    private HighlightRepository highlightRepository;
 
     @Test
     void saveMetrics_성공() {
@@ -87,6 +84,60 @@ class StreamMetricsServiceTest {
         List<StreamMetricsResponseDTO> streamMetricsResponseDTOList = streamMetricsService.getStreamMetrics(streamSessionResponseDTO.getId());
         // then
         assertThat(streamMetricsResponseDTOList.size()).isEqualTo(2);
+    }
+
+    @Test
+    void saveMetrics_하이라이트_감지_성공() {
+        // given
+        Streamer streamer = Streamer.builder()
+                .channelId("방송자 채널 1")
+                .nickname("방송자 닉네임 1")
+                .build();
+
+        streamerRepository.save(streamer);
+
+        StreamSessionRequestDTO streamSessionRequestDTO = new StreamSessionRequestDTO("방송자 채널 1", "방송자 제목 1");
+        StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.startSession(streamSessionRequestDTO);
+
+        StreamMetricsRequestDTO streamMetricsRequestDTO1 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 10, 100);
+        StreamMetricsRequestDTO streamMetricsRequestDTO2 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 20, 200);
+
+        streamMetricsService.saveMetrics(streamMetricsRequestDTO1);
+        streamMetricsService.saveMetrics(streamMetricsRequestDTO2);
+
+        // when
+        List<Highlight> highlightList = highlightRepository.findAll();
+
+        // then
+        assertThat(highlightList.size()).isEqualTo(1);
+
+    }
+
+    @Test
+    void saveMetrics_하이라이트_감지_실패() {
+        // given
+        Streamer streamer = Streamer.builder()
+                .channelId("방송자 채널 1")
+                .nickname("방송자 닉네임 1")
+                .build();
+
+        streamerRepository.save(streamer);
+
+        StreamSessionRequestDTO streamSessionRequestDTO = new StreamSessionRequestDTO("방송자 채널 1", "방송자 제목 1");
+        StreamSessionResponseDTO streamSessionResponseDTO = streamSessionService.startSession(streamSessionRequestDTO);
+
+        StreamMetricsRequestDTO streamMetricsRequestDTO1 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 10, 100);
+        StreamMetricsRequestDTO streamMetricsRequestDTO2 = new StreamMetricsRequestDTO(streamSessionResponseDTO.getId(), 15, 150);
+
+        streamMetricsService.saveMetrics(streamMetricsRequestDTO1);
+        streamMetricsService.saveMetrics(streamMetricsRequestDTO2);
+
+        // when
+        List<Highlight> highlightList = highlightRepository.findAll();
+
+        // then
+        assertThat(highlightList).isEmpty();
+
     }
 
 }
