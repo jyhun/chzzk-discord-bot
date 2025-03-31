@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 public class StreamMetricsRequestDTO {
 
-    private Long sessionId;
+    private String channelId;
     private int chatCount;
     private int viewerCount;
 

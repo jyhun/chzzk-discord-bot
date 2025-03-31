@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface StreamSessionRepository extends JpaRepository<StreamSession, Long> {
     Optional<StreamSession> findByStreamer_ChannelIdAndEndedAtIsNull(String channelId);
+    Optional<StreamSession> findByStreamerId(Long id);
 }
