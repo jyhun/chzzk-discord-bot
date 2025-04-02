@@ -21,3 +21,8 @@ logging:
 
 discord:
   webhook-url: ${DISCORD_WEBHOOK_URL}
+
+chzzk:
+  api-base-url: ${CHZZK_API_BASE_URL}
+  client-id: ${CHZZK_CLIENT_ID}
+  client-secret: ${CHZZK_CLIENT_SECRET}
