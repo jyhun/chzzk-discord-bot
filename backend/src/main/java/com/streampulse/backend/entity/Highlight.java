@@ -19,6 +19,14 @@ public class Highlight {
     @ManyToOne(fetch = FetchType.LAZY)
     private StreamSession session;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    private StreamMetrics metrics;
+
+    @Column(length = 500)
+    private String summary;
+
+    private boolean notified;
+
     private LocalDateTime detectedAt;
 
     private int chatCount;

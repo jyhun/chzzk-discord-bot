@@ -24,7 +24,7 @@ public class StreamMetricsService {
     private final StreamerRepository streamerRepository;
     private final HighlightService highlightService;
 
-    public void saveMetrics(StreamSession session, LiveResponseDTO dto) {
+    public void saveMetrics(StreamSession session, LiveResponseDTO dto, Integer averageViewerCount) {
         StreamMetrics metrics = StreamMetrics.builder()
                 .session(session)
                 .collectedAt(LocalDateTime.now())
@@ -33,7 +33,10 @@ public class StreamMetricsService {
                 .title(dto.getLiveTitle())
                 .thumbnailUrl(dto.getLiveThumbnailImageUrl())
                 .build();
-        streamMetricsRepository.save(metrics);
+        metrics = streamMetricsRepository.save(metrics);
+        if(metrics.getViewerCount() > averageViewerCount) {
+            highlightService.saveHighlight(metrics);
+        }
     }
 
     public List<StreamMetricsResponseDTO> getStreamMetrics(Long sessionId) {

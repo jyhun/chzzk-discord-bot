@@ -37,7 +37,7 @@ public class LiveSyncService {
                 streamerService.updateLiveStatus(streamer, true);
             }
 
-            streamMetricsService.saveMetrics(session, dto);
+            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
         }
 
         streamerService.markOfflineStreamers(liveStreamerChannelIds);
