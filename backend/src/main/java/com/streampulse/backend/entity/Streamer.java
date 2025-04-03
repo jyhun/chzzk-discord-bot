@@ -1,8 +1,13 @@
 package com.streampulse.backend.entity;
 
 import com.streampulse.backend.dto.StreamerRequestDTO;
-import jakarta.persistence.*;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import lombok.*;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -20,6 +25,10 @@ public class Streamer {
     private String nickname;
 
     private boolean live;
+
+    private Integer averageViewerCount;
+
+    private LocalDateTime updatedAt;
 
     public void updateLive(boolean live) {
         this.live = live;

@@ -21,6 +21,10 @@ public class StreamSession {
 
     private String title;
 
+    private String thumbnailUrl;
+
+    private String category;
+
     private LocalDateTime startedAt;
 
     private LocalDateTime endedAt;
