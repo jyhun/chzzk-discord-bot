@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 
 
 @Service
@@ -47,7 +48,7 @@ public class StreamerService {
 
     @Transactional(readOnly = true)
     public List<StreamerResponseDTO> getAllStreamers() {
-         return streamerRepository.findAll().stream()
+        return streamerRepository.findAll().stream()
                 .map(streamer -> StreamerResponseDTO.builder()
                         .id(streamer.getId())
                         .channelId(streamer.getChannelId())
@@ -77,4 +78,28 @@ public class StreamerService {
         streamerRepository.delete(streamer);
     }
 
+    public Streamer getOrCreateStreamer(String channelId, String channelName) {
+        return streamerRepository.findByChannelId(channelId).orElseGet(
+                () -> streamerRepository.save(
+                        Streamer.builder()
+                                .channelId(channelId)
+                                .nickname(channelName)
+                                .live(false)
+                                .build()));
+    }
+
+    public void updateLiveStatus(Streamer streamer, boolean isLive) {
+        streamer.updateLive(isLive);
+        streamerRepository.save(streamer);
+    }
+
+    public void markOfflineStreamers(Set<String> liveStreamerChannelIds) {
+        List<Streamer> streamerList = streamerRepository.findByLiveIsTrue();
+        for (Streamer streamer : streamerList) {
+            if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
+                streamer.updateLive(false);
+                streamerRepository.save(streamer);
+            }
+        }
+    }
 }

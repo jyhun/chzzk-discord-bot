@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.StreamSessionRequestDTO;
 import com.streampulse.backend.dto.StreamSessionResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @Transactional
@@ -70,4 +72,16 @@ public class StreamSessionService {
                 .build();
     }
 
+    public StreamSession getOrCreateSession(Streamer streamer, LiveResponseDTO dto) {
+        if (!streamer.isLive()) {
+            StreamSession session = StreamSession.builder()
+                    .streamer(streamer)
+                    .title(dto.getLiveTitle())
+                    .startedAt(LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .build();
+            return streamSessionRepository.save(session);
+        }
+        return streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
+                .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));
+    }
 }
