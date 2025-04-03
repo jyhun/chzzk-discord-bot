@@ -63,5 +63,7 @@ public class HighlightService {
                 .build();
 
         highlightRepository.save(highlight);
+
+        notificationService.notifyHighlight(highlight);
     }
 }

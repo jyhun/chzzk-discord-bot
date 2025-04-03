@@ -22,30 +22,50 @@ public class NotificationService {
 
     public void notifyHighlight(Highlight highlight) {
         String message = generateMessage(highlight);
+        boolean success;
+        String errorMessage = null;
 
         try {
-            discordNotifier.sendMessage(message);
-
-            Notification notification = Notification.builder()
-                    .highlight(highlight)
-                    .sentAt(LocalDateTime.now())
-                    .message(message)
-                    .build();
-
-            notificationRepository.save(notification);
+            success = discordNotifier.sendMessage(message);
+            if (success) {
+                highlight.updateNotified(true);
+            } else {
+                errorMessage = "디스코드 응답 실패";
+            }
         } catch (Exception e) {
-            log.error("알림 전송 실패", e);
+            success = false;
+            errorMessage = e.getMessage();
+            log.error("알림 전송 중 예외 발생", e);
         }
+        Notification notification = Notification.builder()
+                .highlight(highlight)
+                .sentAt(LocalDateTime.now())
+                .message(message)
+                .success(success)
+                .errorMessage(errorMessage)
+                .build();
+
+        notificationRepository.save(notification);
     }
 
     private String generateMessage(Highlight highlight) {
+        String nickname = highlight.getMetrics()
+                .getSession()
+                .getStreamer()
+                .getNickname();
+        String title = highlight.getMetrics().getTitle();
+        String category = highlight.getMetrics().getCategory();
+        int viewerCount = highlight.getMetrics().getViewerCount();
+        LocalDateTime detectedAt = highlight.getDetectedAt();
+
         return String.format("""
                 **하이라이트 감지!**
                 방송자: %s
-                채팅 수: %d
-                급등률: %.1f배
-                시각: %s
-                """, highlight.getSession().getStreamer().getNickname(), highlight.getChatCount(), highlight.getScore(), highlight.getDetectedAt());
+                방송제목: %s
+                카테고리: %s
+                시청자 수: %,d명
+                감지 시각: %s                
+                """, nickname, title, category, viewerCount, detectedAt);
     }
 
 }

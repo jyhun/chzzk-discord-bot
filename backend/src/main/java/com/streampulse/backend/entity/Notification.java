@@ -24,4 +24,9 @@ public class Notification {
     @Column(columnDefinition = "TEXT")
     private String message;
 
+    private boolean success;
+
+    @Column(length = 500)
+    private String errorMessage;
+
 }

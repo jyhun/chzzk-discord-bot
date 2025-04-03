@@ -33,4 +33,7 @@ public class Highlight {
 
     private float score;
 
+    public void updateNotified(boolean notified) {
+        this.notified = notified;
+    }
 }
