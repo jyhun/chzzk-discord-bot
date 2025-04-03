@@ -22,6 +22,7 @@ public class HighlightService {
     private final StreamMetricsRepository streamMetricsRepository;
     private final StreamSessionRepository streamSessionRepository;
     private final NotificationService notificationService;
+    private final ChatService chatService;
 
     public void detectAndSaveHighlight(Long sessionId) {
         StreamSession streamSession = streamSessionRepository.findById(sessionId)
@@ -63,6 +64,8 @@ public class HighlightService {
                 .build();
 
         highlightRepository.save(highlight);
+
+        chatService.collectChatsForHighlight(highlight);
 
         notificationService.notifyHighlight(highlight);
     }

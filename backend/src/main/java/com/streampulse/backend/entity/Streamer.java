@@ -26,7 +26,7 @@ public class Streamer {
 
     private boolean live;
 
-    private Integer averageViewerCount;
+    private int averageViewerCount;
 
     private LocalDateTime updatedAt;
 
