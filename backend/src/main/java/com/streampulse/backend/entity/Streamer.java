@@ -19,6 +19,12 @@ public class Streamer {
 
     private String nickname;
 
+    private boolean live;
+
+    public void updateLive(boolean live) {
+        this.live = live;
+    }
+
     public void update(StreamerRequestDTO streamerRequestDTO) {
         if(streamerRequestDTO.getChannelId() != null) {
             this.channelId = streamerRequestDTO.getChannelId();
