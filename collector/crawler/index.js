@@ -5,6 +5,7 @@ const axios = require('axios');
 
 const baseUrl = process.env.BASE_URL;
 const channelId = process.argv[2];
+const highlightId = process.argv[3];
 
 if (!channelId) {
   console.error('Error: CHANNEL_ID가 인자로 전달되지 않았습니다.');
@@ -56,7 +57,7 @@ let messages = [];
       messages: messages
     };
     try {
-      await axios.post(`${baseUrl}/api/chat/${channelId}`, payload);
+      await axios.post(`${baseUrl}/api/chat/${channelId}/${highlightId}`, payload);
       console.log('최종 HTTP 요청 전송 완료:', payload);
     } catch (error) {
       console.error('HTTP 요청 오류:', error.message);
