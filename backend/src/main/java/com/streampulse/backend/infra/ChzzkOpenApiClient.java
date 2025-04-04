@@ -77,7 +77,7 @@ public class ChzzkOpenApiClient {
 
             List<LiveResponseDTO> data = response.getContent().getData();
             int viewerCount = data.get(0).getConcurrentUserCount();
-            if (viewerCount < 100) {
+            if (viewerCount < 20000) {
                 log.info("시청자 수 {}명 이하. 종료.", viewerCount);
                 break;
             }
@@ -120,7 +120,7 @@ public class ChzzkOpenApiClient {
     }
 
     private ChzzkRootResponseDTO fetchPage(String next) {
-        String url = chzzkBaseUrl + "/open/v1/lives?size=20" + (!NO_CURSOR.equals(next) ? "&next=" + next : "");
+        String url = chzzkBaseUrl + "/open/v1/lives?size=1" + (!NO_CURSOR.equals(next) ? "&next=" + next : "");
         log.info("url:{}", url);
         HttpHeaders headers = new HttpHeaders();
         headers.set("Client-Id", clientId);

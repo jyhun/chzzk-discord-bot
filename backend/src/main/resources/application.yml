@@ -26,3 +26,7 @@ chzzk:
   api-base-url: ${CHZZK_API_BASE_URL}
   client-id: ${CHZZK_CLIENT_ID}
   client-secret: ${CHZZK_CLIENT_SECRET}
+
+openai:
+  api:
+    key: ${OPENAI_API_KEY}

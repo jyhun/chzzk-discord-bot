@@ -66,7 +66,5 @@ public class HighlightService {
         highlightRepository.save(highlight);
 
         chatService.collectChatsForHighlight(highlight);
-
-        notificationService.notifyHighlight(highlight);
     }
 }
