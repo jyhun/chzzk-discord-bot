@@ -22,9 +22,9 @@ public class LiveSyncService {
     private final StreamSessionService streamSessionService;
     private final StreamMetricsService streamMetricsService;
 
-    private final Set<String> liveStreamerChannelIds = new HashSet<>();
-
     public void syncLiveBroadcasts() {
+        Set<String> liveStreamerChannelIds = new HashSet<>();
+
         List<LiveResponseDTO> liveResponseDTOList = chzzkOpenApiClient.fetchLiveList();
 
         for (LiveResponseDTO dto : liveResponseDTOList) {

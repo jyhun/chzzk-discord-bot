@@ -3,14 +3,15 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.dto.ChatMessagesRequestDTO;
 import com.streampulse.backend.dto.GptMessageDTO;
 import com.streampulse.backend.dto.GptRequestDTO;
-import com.streampulse.backend.dto.GptResponseDTO;
 import com.streampulse.backend.entity.Highlight;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.repository.HighlightRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -101,24 +102,24 @@ public class ChatService {
         httpHeaders.setBearerAuth(openAiApiKey);
         HttpEntity<GptRequestDTO> httpEntity = new HttpEntity<>(gptRequestDTO, httpHeaders);
 
-        try {
-            ResponseEntity<GptResponseDTO> response = restTemplate.exchange(
-                    openAiApiUrl,
-                    HttpMethod.POST,
-                    httpEntity,
-                    GptResponseDTO.class
-            );
-
-            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
-                highlight.updateSummary(summary);
-                log.info("GPT 요약 결과: {}", summary);
-            } else {
-                log.warn("GPT API 호출 실패: {}", response.getStatusCode());
-            }
-        } catch (Exception e) {
-            log.error("GPT API 호출 중 오류 발생", e);
-        }
+//        try {
+//            ResponseEntity<GptResponseDTO> response = restTemplate.exchange(
+//                    openAiApiUrl,
+//                    HttpMethod.POST,
+//                    httpEntity,
+//                    GptResponseDTO.class
+//            );
+//
+//            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+//                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
+//                highlight.updateSummary(summary);
+//                log.info("GPT 요약 결과: {}", summary);
+//            } else {
+//                log.warn("GPT API 호출 실패: {}", response.getStatusCode());
+//            }
+//        } catch (Exception e) {
+//            log.error("GPT API 호출 중 오류 발생", e);
+//        }
 
         return highlight;
 

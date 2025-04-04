@@ -77,7 +77,7 @@ public class ChzzkOpenApiClient {
 
             List<LiveResponseDTO> data = response.getContent().getData();
             int viewerCount = data.get(0).getConcurrentUserCount();
-            if (viewerCount < 20000) {
+            if (viewerCount < 100) {
                 log.info("시청자 수 {}명 이하. 종료.", viewerCount);
                 break;
             }
