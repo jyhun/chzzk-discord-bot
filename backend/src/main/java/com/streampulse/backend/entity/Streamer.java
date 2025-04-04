@@ -42,4 +42,9 @@ public class Streamer {
             this.nickname = streamerRequestDTO.getNickname();
         }
     }
+
+    public void updateAverageViewerCount(int averageViewerCount) {
+        this.averageViewerCount = averageViewerCount;
+    }
+
 }

@@ -18,6 +18,7 @@ import java.util.Set;
 public class StreamerService {
 
     private final StreamerRepository streamerRepository;
+    private final StreamSessionService streamSessionService;
 
     public StreamerResponseDTO registerStreamer(StreamerRequestDTO streamerRequestDTO) {
         Streamer streamer = Streamer.builder()
@@ -99,6 +100,8 @@ public class StreamerService {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
                 streamer.updateLive(false);
                 streamerRepository.save(streamer);
+
+                streamSessionService.handleStreamEnd(streamer);
             }
         }
     }

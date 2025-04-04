@@ -29,10 +29,23 @@ public class StreamSession {
 
     private LocalDateTime endedAt;
 
+    private int averageViewerCount;
+
+    private int peekViewerCount;
+
 
     public void updateEndedAt() {
         if (endedAt == null) {
             this.endedAt = LocalDateTime.now();
         }
     }
+
+    public void updateAverageViewerCount(int averageViewerCount) {
+        this.averageViewerCount = averageViewerCount;
+    }
+
+    public void updatePeekViewerCount(int peekViewerCount) {
+        this.peekViewerCount = peekViewerCount;
+    }
+
 }
