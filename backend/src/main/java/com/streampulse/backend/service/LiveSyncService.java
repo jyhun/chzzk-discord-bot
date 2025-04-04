@@ -30,7 +30,7 @@ public class LiveSyncService {
         for (LiveResponseDTO dto : liveResponseDTOList) {
             liveStreamerChannelIds.add(dto.getChannelId());
 
-            Streamer streamer = streamerService.getOrCreateStreamer(dto.getChannelId(), dto.getChannelName());
+            Streamer streamer = streamerService.getOrCreateStreamer(dto);
             StreamSession session = streamSessionService.getOrCreateSession(streamer, dto);
 
             if (!streamer.isLive()) {

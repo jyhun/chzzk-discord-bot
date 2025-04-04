@@ -34,7 +34,7 @@ public class StreamMetricsService {
                 .thumbnailUrl(dto.getLiveThumbnailImageUrl())
                 .build();
         metrics = streamMetricsRepository.save(metrics);
-        if(metrics.getViewerCount() > averageViewerCount) {
+        if(metrics.getViewerCount() > averageViewerCount * 1.5) {
             highlightService.saveHighlight(metrics);
         }
     }

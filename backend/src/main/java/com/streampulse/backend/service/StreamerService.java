@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.StreamerRequestDTO;
 import com.streampulse.backend.dto.StreamerResponseDTO;
 import com.streampulse.backend.entity.Streamer;
@@ -79,12 +80,13 @@ public class StreamerService {
         streamerRepository.delete(streamer);
     }
 
-    public Streamer getOrCreateStreamer(String channelId, String channelName) {
-        return streamerRepository.findByChannelId(channelId).orElseGet(
+    public Streamer getOrCreateStreamer(LiveResponseDTO dto) {
+        return streamerRepository.findByChannelId(dto.getChannelId()).orElseGet(
                 () -> streamerRepository.save(
                         Streamer.builder()
-                                .channelId(channelId)
-                                .nickname(channelName)
+                                .channelId(dto.getChannelId())
+                                .nickname(dto.getChannelName())
+                                .averageViewerCount(dto.getConcurrentUserCount())
                                 .live(false)
                                 .build()));
     }
