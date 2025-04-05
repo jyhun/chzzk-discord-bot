@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!-- 로그 저장 경로 및 패턴 정의 -->
     <property name="LOG_PATH" value="/logs" />
-    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%level] [%thread] %logger{36} - %msg%n"/>
+    <property name="LOG_PATTERN" value="%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%level] [%thread] %logger{36} - %msg%n%ex{full}" />
 
     <!-- 파일 로그 (롤링 파일 appender) -->
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
@@ -22,9 +23,9 @@
         </encoder>
     </appender>
 
-    <!-- 루트 로거: 파일만 사용 -->
+    <!-- 루트 로거: 파일로만 기록 -->
     <root level="INFO">
-        <appender-ref ref="FILE"/>
+        <appender-ref ref="FILE" />
     </root>
 
 </configuration>

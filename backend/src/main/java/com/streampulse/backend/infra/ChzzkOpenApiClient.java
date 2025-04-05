@@ -1,5 +1,6 @@
 package com.streampulse.backend.infra;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.ChzzkRootResponseDTO;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class ChzzkOpenApiClient {
         }
     }
 
+    @LogExecution
     public List<LiveResponseDTO> fetchLiveList() {
         List<LiveResponseDTO> liveList = new ArrayList<>();
         Set<String> failedCursors = new HashSet<>();
@@ -59,7 +61,6 @@ public class ChzzkOpenApiClient {
             String curCursor = currentNode.cursor;
             ChzzkRootResponseDTO response = fetchPage(curCursor);
 
-            // 오류 응답: API가 {"code":400, "message": "잘못된 next 값입니다."} 형태로 내려오면 response가 null 또는 content가 없음
             if (response == null || response.getContent() == null) {
                 log.error("잘못된 next 값 {} 에러 발생.", curCursor);
                 Node newNode = handleInvalidNext(currentNode, curCursor, visitedCursors, failedCursors);
@@ -72,10 +73,10 @@ public class ChzzkOpenApiClient {
             }
 
             String nextCursor = response.getContent().getPage().getNext();
-            log.info("previous cursor: {}, next cursor: {}", curCursor, nextCursor);
+            log.info("Cursor 이동 - previous: {}, next: {}", curCursor, nextCursor);
 
-            // 실패한 커서 혹은 이미 방문한 커서이면 부모 노드로 이동
             if (failedCursors.contains(nextCursor) || visitedCursors.contains(nextCursor)) {
+                log.warn("중복 또는 실패 커서 발견: {}. 부모 노드로 이동합니다.", nextCursor);
                 currentNode = (currentNode.parent != null) ? currentNode.parent : currentNode;
                 continue;
             }
@@ -106,42 +107,53 @@ public class ChzzkOpenApiClient {
                                    Set<String> visited, Set<String> failed) {
         Node parent = currentNode.parent;
         if (parent == null) return null;
+
         ChzzkRootResponseDTO parentResp = fetchPage(parent.cursor);
         if (parentResp == null || parentResp.getContent() == null) {
             failed.add(parent.cursor);
             return (parent.parent != null) ? parent.parent : currentNode;
         }
+
         String parentNext = parentResp.getContent().getPage().getNext();
         while (parentNext.equals(errorNext)) {
-            log.info("부모의 next 값 {}가 오류 값 {}와 동일. 10초 후 재조회.", parentNext, errorNext);
+            log.warn("부모의 next 값 {}가 오류 값 {}와 동일합니다. {} ms 후 재조회합니다.", parentNext, errorNext, RETRY_WAIT_MS);
             try {
                 Thread.sleep(RETRY_WAIT_MS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
+
             parentResp = fetchPage(parent.cursor);
             if (parentResp == null || parentResp.getContent() == null) break;
             parentNext = parentResp.getContent().getPage().getNext();
         }
+
         if (parentResp == null || parentResp.getContent() == null) {
             return (parent.parent != null) ? parent.parent : currentNode;
         }
         if (visited.contains(parentNext)) {
+            log.warn("부모 노드의 next 커서 {} 가 이미 방문된 커서입니다.", parentNext);
             return parent.parent;
         }
+
         visited.add(parentNext);
         return new Node(parentNext, parent);
     }
 
     private ChzzkRootResponseDTO fetchPage(String next) {
         String url = chzzkBaseUrl + "/open/v1/lives?size=20" + (!NO_CURSOR.equals(next) ? "&next=" + next : "");
-        log.info("url:{}", url);
         HttpHeaders headers = new HttpHeaders();
         headers.set("Client-Id", clientId);
         headers.set("Client-Secret", clientSecret);
         HttpEntity<String> entity = new HttpEntity<>(headers);
+
         try {
-            ResponseEntity<ChzzkRootResponseDTO> resp = restTemplate.exchange(url, HttpMethod.GET, entity, ChzzkRootResponseDTO.class);
+            ResponseEntity<ChzzkRootResponseDTO> resp = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    ChzzkRootResponseDTO.class
+            );
             return resp.getBody();
         } catch (Exception e) {
             log.warn("치지직 라이브 목록 페이징 호출 실패");

@@ -1,5 +1,6 @@
 package com.streampulse.backend.scheduler;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.service.LiveSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +15,8 @@ public class LiveSyncScheduler {
     private final LiveSyncService liveSyncService;
 
     @Scheduled(fixedRate = 60000)
+    @LogExecution
     public void scheduleSyncLiveBroadcasts() {
-        log.info("scheduleSyncLiveBroadcasts 스케쥴러 실행");
         liveSyncService.syncLiveBroadcasts();
     }
 

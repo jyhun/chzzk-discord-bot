@@ -36,20 +36,15 @@ public class ChatService {
     public void collectChatsForHighlight(Highlight highlight) {
         try {
             String channelId = highlight.getMetrics().getSession().getStreamer().getChannelId();
-
             Long id = highlight.getId();
 
             ProcessBuilder processBuilder = new ProcessBuilder(
                     "node", "index.js", channelId, String.valueOf(id)
             );
-
             processBuilder.directory(new java.io.File("../collector/crawler"));
-
             processBuilder.start();
-
-            log.info("채팅 수집 프로세스 실행됨 - 채널:{}", channelId);
         } catch (Exception e) {
-            log.error("채팅 수집 실행 실패", e);
+            throw new RuntimeException("채팅 수집 프로세스 실행 실패", e);
         }
     }
 
@@ -113,12 +108,11 @@ public class ChatService {
 //            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
 //                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
 //                highlight.updateSummary(summary);
-//                log.info("GPT 요약 결과: {}", summary);
 //            } else {
-//                log.warn("GPT API 호출 실패: {}", response.getStatusCode());
+//                throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
 //            }
 //        } catch (Exception e) {
-//            log.error("GPT API 호출 중 오류 발생", e);
+//            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
 //        }
 
         return highlight;

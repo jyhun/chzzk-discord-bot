@@ -1,5 +1,6 @@
 package com.streampulse.backend.infra;
 
+import com.streampulse.backend.aop.LogExecution;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,21 +23,21 @@ public class DiscordNotifier {
 
     private final RestTemplate restTemplate;
 
+    @LogExecution
     public boolean sendMessage(String message) {
-        HttpHeaders httpHeaders = new HttpHeaders();
-        httpHeaders.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<Map<String, String>> request = new HttpEntity<>(
-                Map.of("content", message), httpHeaders
-        );
         try {
+            HttpHeaders httpHeaders = new HttpHeaders();
+            httpHeaders.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, String>> request = new HttpEntity<>(
+                    Map.of("content", message), httpHeaders
+            );
+
             ResponseEntity<String> response = restTemplate.postForEntity(webhookUrl, request, String.class);
-            log.info("디스코드 알림 전송 완료. 응답 상태: {}", response.getStatusCode());
             return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
-            log.error("디스코드 알림 전송 실패", e);
             return false;
         }
     }
-
 }
+

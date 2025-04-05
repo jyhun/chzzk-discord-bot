@@ -37,8 +37,8 @@ public class NotificationService {
         } catch (Exception e) {
             success = false;
             errorMessage = e.getMessage();
-            log.error("알림 전송 중 예외 발생", e);
         }
+
         Notification notification = Notification.builder()
                 .highlight(highlight)
                 .sentAt(LocalDateTime.now())
