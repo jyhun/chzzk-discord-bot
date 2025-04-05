@@ -1,5 +1,8 @@
 ### 커스텀 ###
 .env
+.env.dev
+.env.*
+logs
 
 ### [backend] ###
 ##############

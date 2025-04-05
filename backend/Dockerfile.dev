@@ -1,0 +1,15 @@
+FROM gradle:8.5-jdk17
+
+WORKDIR /home/gradle/project
+
+COPY --chown=gradle:gradle gradle/ gradle/
+COPY --chown=gradle:gradle gradlew .
+COPY --chown=gradle:gradle build.gradle* settings.gradle* ./
+
+RUN ./gradlew dependencies --no-daemon || return 0
+
+COPY --chown=gradle:gradle . .
+
+EXPOSE 8080
+
+CMD ["sh", "-c", "./gradlew bootRun --no-daemon $JAVA_OPTS"]
