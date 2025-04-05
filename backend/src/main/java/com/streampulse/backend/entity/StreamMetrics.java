@@ -29,6 +29,4 @@ public class StreamMetrics {
 
     private String title;
 
-    private String thumbnailUrl;
-
 }

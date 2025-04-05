@@ -33,13 +33,19 @@ public class ChzzkOpenApiClient {
     @Value("${chzzk.client-secret}")
     private String clientSecret;
 
+    private static final int RETRY_WAIT_MS = 10000;
+
     private static final String NO_CURSOR = "";
 
     // 커서 체인 관리를 위한 내부 클래스
     private static class Node {
         String cursor;
         Node parent;
-        Node(String cursor, Node parent) { this.cursor = cursor; this.parent = parent; }
+
+        Node(String cursor, Node parent) {
+            this.cursor = cursor;
+            this.parent = parent;
+        }
     }
 
     public List<LiveResponseDTO> fetchLiveList() {
@@ -76,8 +82,12 @@ public class ChzzkOpenApiClient {
             visitedCursors.add(nextCursor);
 
             List<LiveResponseDTO> data = response.getContent().getData();
-            int viewerCount = data.get(0).getConcurrentUserCount();
-            if (viewerCount < 100) {
+            if (data.isEmpty()) {
+                log.warn("방송자 목록이 비어 있어 종료합니다.");
+                break;
+            }
+            int viewerCount = data.get(data.size() - 1).getConcurrentUserCount();
+            if (viewerCount < 1000) {
                 log.info("시청자 수 {}명 이하. 종료.", viewerCount);
                 break;
             }
@@ -104,7 +114,11 @@ public class ChzzkOpenApiClient {
         String parentNext = parentResp.getContent().getPage().getNext();
         while (parentNext.equals(errorNext)) {
             log.info("부모의 next 값 {}가 오류 값 {}와 동일. 10초 후 재조회.", parentNext, errorNext);
-            try { Thread.sleep(10000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            try {
+                Thread.sleep(RETRY_WAIT_MS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
             parentResp = fetchPage(parent.cursor);
             if (parentResp == null || parentResp.getContent() == null) break;
             parentNext = parentResp.getContent().getPage().getNext();
@@ -120,7 +134,7 @@ public class ChzzkOpenApiClient {
     }
 
     private ChzzkRootResponseDTO fetchPage(String next) {
-        String url = chzzkBaseUrl + "/open/v1/lives?size=1" + (!NO_CURSOR.equals(next) ? "&next=" + next : "");
+        String url = chzzkBaseUrl + "/open/v1/lives?size=20" + (!NO_CURSOR.equals(next) ? "&next=" + next : "");
         log.info("url:{}", url);
         HttpHeaders headers = new HttpHeaders();
         headers.set("Client-Id", clientId);
@@ -130,7 +144,7 @@ public class ChzzkOpenApiClient {
             ResponseEntity<ChzzkRootResponseDTO> resp = restTemplate.exchange(url, HttpMethod.GET, entity, ChzzkRootResponseDTO.class);
             return resp.getBody();
         } catch (Exception e) {
-            log.error("치지직 라이브 목록 페이징 호출 실패");
+            log.warn("치지직 라이브 목록 페이징 호출 실패");
             return null;
         }
     }
