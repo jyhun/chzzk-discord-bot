@@ -6,6 +6,7 @@ import com.streampulse.backend.service.ChatService;
 import com.streampulse.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -16,6 +17,7 @@ public class ChatController {
     private final ChatService chatService;
     private final NotificationService notificationService;
 
+    @Transactional
     @PostMapping("/{channelId}/{highlightId}")
     public ResponseEntity<String> chatCollector(@PathVariable String channelId, @PathVariable String highlightId, @RequestBody ChatMessagesRequestDTO chatMessagesRequestDTO) {
         Highlight highlight = chatService.collectChats(channelId, highlightId, chatMessagesRequestDTO);

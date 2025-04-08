@@ -1,0 +1,22 @@
+FROM node:18
+
+# 1. 작업 디렉토리 생성
+WORKDIR /app
+
+# 2. package.json, package-lock.json 복사
+COPY package*.json ./
+
+# 3. 의존성 설치
+RUN npm install
+
+# 4. Playwright 브라우저 설치 (의존성 및 브라우저 다운로드)
+RUN npx playwright install --with-deps
+
+# 5. 나머지 코드 복사
+COPY . .
+
+# 6. 포트 오픈
+EXPOSE 3001
+
+# 8. 기본 실행
+CMD ["node", "index.js"]

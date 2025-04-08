@@ -11,12 +11,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -30,6 +33,9 @@ public class ChatService {
     @Value("${openai.api.key}")
     private String openAiApiKey;
 
+    @Value("${processor.url}")
+    private String processorUrl;
+
     private final RestTemplate restTemplate;
     private final HighlightRepository highlightRepository;
 
@@ -38,11 +44,18 @@ public class ChatService {
             String channelId = highlight.getMetrics().getSession().getStreamer().getChannelId();
             Long id = highlight.getId();
 
-            ProcessBuilder processBuilder = new ProcessBuilder(
-                    "node", "index.js", channelId, String.valueOf(id)
-            );
-            processBuilder.directory(new java.io.File("../collector/crawler"));
-            processBuilder.start();
+            String url = processorUrl + "/crawler";
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("channelId", channelId);
+            requestBody.put("highlightId", id);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+
+            restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
+
         } catch (Exception e) {
             throw new RuntimeException("채팅 수집 프로세스 실행 실패", e);
         }

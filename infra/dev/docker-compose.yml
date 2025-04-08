@@ -23,6 +23,24 @@ services:
     restart: always
     depends_on:
       - db
+      - processor
+
+  processor:
+    build:
+      context: ../../processor
+      dockerfile: Dockerfile.dev
+    container_name: processor
+    ports:
+      - "3001:3001"  
+    env_file:
+      - ../../.env.dev
+    volumes:
+      - ../../logs/dev:/logs
+    networks:
+      - app-network
+    command: ["node", "index.js"]
+    restart: always
+
 
   db:
     image: mysql:8.0
