@@ -1,14 +1,17 @@
 spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
+    open-in-view: false
     database-platform: org.hibernate.dialect.MySQL8Dialect
 
 logging:
-  level:
-    root: info
+  file:
+    path: /logs
+    name: /logs/app.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%level] [%thread] %logger{36} - %msg%n"
 
 discord:
   webhook-url: ${DISCORD_WEBHOOK_URL}
@@ -21,3 +24,6 @@ chzzk:
 openai:
   api:
     key: ${OPENAI_API_KEY}
+
+server:
+  port: 8080

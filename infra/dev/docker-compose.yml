@@ -1,0 +1,92 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile.dev
+    container_name: backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../../.env.dev
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - JAVA_OPTS=-Duser.timezone=Asia/Seoul -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
+    volumes:
+      - ../../backend:/home/gradle/project
+      - ../../logs/dev:/logs
+    networks:
+      - app-network
+      - monitoring-network
+    command: ./gradlew bootRun --no-daemon $JAVA_OPTS
+    restart: always
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8.0
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: streampulse
+      TZ: Asia/Seoul
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-network
+      - monitoring-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - monitoring-network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - monitoring-network
+    volumes:
+      - grafana-storage:/var/lib/grafana
+
+  loki:
+    image: grafana/loki:2.9.1
+    container_name: loki
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring-network
+
+  promtail:
+    image: grafana/promtail:2.9.1
+    container_name: promtail
+    volumes:
+      - ../../logs/dev:/logs
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    networks:
+      - monitoring-network
+
+networks:
+  app-network:
+    driver: bridge
+  monitoring-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  grafana-storage:
