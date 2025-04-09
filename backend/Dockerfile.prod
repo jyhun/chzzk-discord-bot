@@ -1,0 +1,20 @@
+FROM gradle:8.5-jdk17 AS builder
+
+WORKDIR /home/gradle/project
+
+COPY --chown=gradle:gradle gradle/ gradle/
+COPY --chown=gradle:gradle gradlew .
+COPY --chown=gradle:gradle build.gradle* settings.gradle* ./
+COPY --chown=gradle:gradle . .
+
+RUN ./gradlew clean build -x test --no-daemon
+
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+COPY --from=builder /home/gradle/project/build/libs/streampulse.jar streampulse.jar
+
+EXPOSE 8080
+
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar streampulse.jar"]

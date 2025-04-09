@@ -1,0 +1,37 @@
+# 1단계: 빌드 스테이지 (dependencies 및 브라우저 설치)
+FROM node:18 AS builder
+
+WORKDIR /app
+
+# 리포지토리 루트의 package.json, package-lock.json 복사
+COPY package*.json ./
+
+# 프로덕션 모드로 의존성 설치 (devDependencies 제외)
+RUN npm install --production
+
+# Playwright 브라우저 설치 경로를 /app/.cache/ms-playwright로 지정
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/.cache/ms-playwright
+
+# Playwright 브라우저 설치 (의존성 및 브라우저 다운로드)
+RUN npx playwright install --with-deps
+
+# 전체 애플리케이션 코드 복사 (리포지토리의 모든 파일)
+COPY . .
+
+# 2단계: 최종 이미지 (경량화된 Node 이미지 사용)
+FROM node:18-slim
+
+WORKDIR /app
+
+# 빌드 스테이지에서 node_modules 복사
+COPY --from=builder /app/node_modules ./node_modules
+
+# 빌드 스테이지에서 Playwright 브라우저 파일 복사
+COPY --from=builder /app/.cache/ms-playwright ./node_modules/playwright/.local-browsers
+
+# 빌드 스테이지에서 애플리케이션 코드 복사
+COPY --from=builder /app .
+
+EXPOSE 3001
+
+CMD ["node", "index.js"]
