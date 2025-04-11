@@ -21,6 +21,27 @@ COPY . .
 # 2단계: 최종 이미지 (경량화된 Node 이미지 사용)
 FROM node:18-slim
 
+# Chromium 실행에 필요한 시스템 라이브러리 설치
+RUN apt-get update && apt-get install -y \
+    libglib2.0-0 \
+    libnss3 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libx11-xcb1 \
+    libxcomposite1 \
+    libxcursor1 \
+    libxdamage1 \
+    libxext6 \
+    libxi6 \
+    libxrandr2 \
+    libgbm1 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libxshmfence1 \
+    libxkbcommon0 \
+    libxkbcommon-x11-0 \
+ && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # 빌드 스테이지에서 node_modules 복사
@@ -31,6 +52,9 @@ COPY --from=builder /app/.cache/ms-playwright ./node_modules/playwright/.local-b
 
 # 빌드 스테이지에서 애플리케이션 코드 복사
 COPY --from=builder /app .
+
+# 런타임 환경에서도 Playwright가 복사된 브라우저 파일을 올바르게 참조하도록 환경 변수 설정
+ENV PLAYWRIGHT_BROWSERS_PATH=/app/node_modules/playwright/.local-browsers
 
 EXPOSE 3001
 
