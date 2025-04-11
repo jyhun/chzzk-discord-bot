@@ -7,11 +7,10 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - ../../.env.prod
+      - .env
     volumes:
       - ../../logs/prod:/logs
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
       - JAVA_OPTS=-Duser.timezone=Asia/Seoul -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
     networks:
       - app-network
@@ -19,6 +18,7 @@ services:
     command: ["sh", "-c", "java $$JAVA_OPTS -jar /app/streampulse.jar"]
     restart: always
     depends_on:
+      - cloud-sql-proxy
       - processor
 
   processor:
@@ -29,7 +29,7 @@ services:
     ports:
       - "3001:3001"
     env_file:
-      - ../../.env.prod
+      - .env
     volumes:
       - ../../logs/prod:/logs
     networks:
@@ -46,6 +46,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - monitoring-network
+    restart: always
 
   grafana:
     image: grafana/grafana
@@ -56,6 +57,7 @@ services:
       - monitoring-network
     volumes:
       - grafana-storage:/var/lib/grafana
+    restart: always
 
   loki:
     image: grafana/loki:2.9.1
@@ -64,6 +66,7 @@ services:
       - "3100:3100"
     networks:
       - monitoring-network
+    restart: always
 
   promtail:
     image: grafana/promtail:2.9.1
@@ -73,6 +76,7 @@ services:
       - ./promtail-config.yml:/etc/promtail/config.yml
     networks:
       - monitoring-network
+    restart: always
 
   node-exporter:
     image: quay.io/prometheus/node-exporter:latest
@@ -90,7 +94,7 @@ services:
       - '--path.sysfs=/host/sys'
       - '--path.rootfs=/rootfs'
     networks:
-      - monitoring-network
+      - monitoring-network      
 
   mysqld-exporter:
     image: prom/mysqld-exporter
@@ -98,11 +102,41 @@ services:
     ports:
       - "9104:9104"
     env_file:
-      - ../../.env.prod
+      - .env
+    entrypoint: >
+      sh -c "
+        echo '[client]' > /tmp/.my.cnf && \
+        echo 'user=$${DB_USER}' >> /tmp/.my.cnf && \
+        echo 'password=$${DB_PASSWORD}' >> /tmp/.my.cnf && \
+        echo 'host=$${DB_HOST}' >> /tmp/.my.cnf && \
+        echo 'database=$${DB_NAME}' >> /tmp/.my.cnf && \
+        /bin/mysqld_exporter --config.my-cnf=/tmp/.my.cnf
+      "
     networks:
       - monitoring-network
+      - app-network
     restart: always
 
+  cloud-sql-proxy:
+    image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.11.2
+    container_name: cloud-sql-proxy
+    env_file:
+      - .env
+    command:
+      [
+        "--address", "0.0.0.0",
+        "--port", "3306",
+        "${CLOUD_SQL_INSTANCE_CONNECTION_NAME}"
+      ]
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/config/credentials.json
+    volumes:
+      - ./credentials.json:/config/credentials.json
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+    restart: always
 
 networks:
   app-network:

@@ -3,4 +3,6 @@
 .env.prod
 .env.*
 logs
+credentials.json
 
+.idea
