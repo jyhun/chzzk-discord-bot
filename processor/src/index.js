@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const { collectChatsForHighlight } = require('./crawler/crawler');
+const startBot  = require('./discord/bot');
 
 const app = express();
 
@@ -32,3 +33,5 @@ app.post('/crawler', async (req, res) => {
 app.listen(3001, () => {
   console.log('processor 서버 실행 시작 (포트: 3001)');
 });
+
+startBot();
