@@ -58,4 +58,4 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/app/node_modules/playwright/.local-browsers
 
 EXPOSE 3001
 
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]

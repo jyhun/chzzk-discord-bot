@@ -34,7 +34,6 @@ services:
       - ../../logs/prod:/logs
     networks:
       - app-network
-    command: [ "node", "index.js" ]
     restart: always
 
   prometheus:

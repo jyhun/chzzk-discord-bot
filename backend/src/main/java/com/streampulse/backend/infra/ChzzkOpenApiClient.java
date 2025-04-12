@@ -62,7 +62,7 @@ public class ChzzkOpenApiClient {
             ChzzkRootResponseDTO response = fetchPage(curCursor);
 
             if (response == null || response.getContent() == null) {
-                log.error("잘못된 next 값 {} 에러 발생.", curCursor);
+                log.warn("잘못된 next 값 {} 에러 발생.", curCursor);
                 Node newNode = handleInvalidNext(currentNode, curCursor, visitedCursors, failedCursors);
                 if (newNode == null) {
                     log.warn("부모 노드가 없거나 오류 지속으로 종료합니다.");
