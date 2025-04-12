@@ -1,6 +1,6 @@
 package com.streampulse.backend.service;
 
-import com.streampulse.backend.entity.Highlight;
+import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.Notification;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.infra.DiscordNotifier;
@@ -22,15 +22,15 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final DiscordNotifier discordNotifier;
 
-    public void notifyHighlight(Highlight highlight) {
-        String message = generateMessage(highlight);
+    public void notifyStreamEvent(StreamEvent streamEvent) {
+        String message = generateMessage(streamEvent);
         boolean success;
         String errorMessage = null;
 
         try {
             success = discordNotifier.sendMessage(message);
             if (success) {
-                highlight.updateNotified(true);
+                streamEvent.updateNotified(true);
             } else {
                 errorMessage = "디스코드 응답 실패";
             }
@@ -40,7 +40,7 @@ public class NotificationService {
         }
 
         Notification notification = Notification.builder()
-                .highlight(highlight)
+                .streamEvent(streamEvent)
                 .sentAt(LocalDateTime.now())
                 .message(message)
                 .success(success)
@@ -50,16 +50,16 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    private String generateMessage(Highlight highlight) {
-        StreamMetrics metrics = highlight.getMetrics();
+    private String generateMessage(StreamEvent streamEvent) {
+        StreamMetrics metrics = streamEvent.getMetrics();
         String channelId = metrics.getSession().getStreamer().getChannelId();
         String streamerUrl = "https://chzzk.naver.com/live/" + channelId;
         String nickname = metrics.getSession().getStreamer().getNickname();
         String title = metrics.getTitle();
         String category = metrics.getCategory();
         int viewerCount = metrics.getViewerCount();
-        String summary = highlight.getSummary();
-        LocalDateTime detectedAt = highlight.getDetectedAt();
+        String summary = streamEvent.getSummary();
+        LocalDateTime detectedAt = streamEvent.getDetectedAt();
         String formattedDate = detectedAt.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm"));
 
         return String.format("""

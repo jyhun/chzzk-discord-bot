@@ -4,10 +4,10 @@ import com.streampulse.backend.dto.StreamMetricsRequestDTO;
 import com.streampulse.backend.dto.StreamMetricsResponseDTO;
 import com.streampulse.backend.dto.StreamSessionRequestDTO;
 import com.streampulse.backend.dto.StreamSessionResponseDTO;
-import com.streampulse.backend.entity.Highlight;
+import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.infra.DiscordNotifier;
-import com.streampulse.backend.repository.HighlightRepository;
+import com.streampulse.backend.repository.StreamEventRepository;
 import com.streampulse.backend.repository.StreamerRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -36,7 +36,7 @@ class StreamMetricsServiceTest {
     private StreamMetricsService streamMetricsService;
 
     @Autowired
-    private HighlightRepository highlightRepository;
+    private StreamEventRepository streamEventRepository;
 
     @MockBean
     private DiscordNotifier discordNotifier;
@@ -112,10 +112,10 @@ class StreamMetricsServiceTest {
         streamMetricsService.saveMetrics(streamMetricsRequestDTO2);
 
         // when
-        List<Highlight> highlightList = highlightRepository.findAll();
+        List<StreamEvent> streamEventList = streamEventRepository.findAll();
 
         // then
-        assertThat(highlightList.size()).isEqualTo(1);
+        assertThat(streamEventList.size()).isEqualTo(1);
 
         Mockito.verify(discordNotifier, Mockito.atLeastOnce()).sendMessage(Mockito.anyString());
 
@@ -141,10 +141,10 @@ class StreamMetricsServiceTest {
         streamMetricsService.saveMetrics(streamMetricsRequestDTO2);
 
         // when
-        List<Highlight> highlightList = highlightRepository.findAll();
+        List<StreamEvent> streamEventList = streamEventRepository.findAll();
 
         // then
-        assertThat(highlightList).isEmpty();
+        assertThat(streamEventList).isEmpty();
 
     }
 

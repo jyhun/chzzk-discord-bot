@@ -1,5 +1,6 @@
 package com.streampulse.backend.entity;
 
+import com.streampulse.backend.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,7 +11,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class Highlight {
+public class StreamEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,6 +23,9 @@ public class Highlight {
     @ManyToOne(fetch = FetchType.LAZY)
     private StreamMetrics metrics;
 
+    @Enumerated(EnumType.STRING)
+    private EventType eventType;
+
     @Column(length = 500)
     private String summary;
 
@@ -29,9 +33,11 @@ public class Highlight {
 
     private LocalDateTime detectedAt;
 
+    private int viewerCount;
+
     private int chatCount;
 
-    private float score;
+    private float viewerIncreaseRate;
 
     public void updateNotified(boolean notified) {
         this.notified = notified;

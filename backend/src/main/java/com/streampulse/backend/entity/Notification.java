@@ -17,7 +17,7 @@ public class Notification {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Highlight highlight;
+    private StreamEvent streamEvent;
 
     private LocalDateTime sentAt;
 

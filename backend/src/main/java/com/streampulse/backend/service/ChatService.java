@@ -3,9 +3,9 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.dto.ChatMessagesRequestDTO;
 import com.streampulse.backend.dto.GptMessageDTO;
 import com.streampulse.backend.dto.GptRequestDTO;
-import com.streampulse.backend.entity.Highlight;
+import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
-import com.streampulse.backend.repository.HighlightRepository;
+import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,17 +37,17 @@ public class ChatService {
     private String processorUrl;
 
     private final RestTemplate restTemplate;
-    private final HighlightRepository highlightRepository;
+    private final StreamEventRepository streamEventRepository;
 
-    public void collectChatsForHighlight(Highlight highlight) {
+    public void collectChatsForStreamEvent(StreamEvent streamEvent) {
         try {
-            String channelId = highlight.getMetrics().getSession().getStreamer().getChannelId();
-            Long id = highlight.getId();
+            String channelId = streamEvent.getMetrics().getSession().getStreamer().getChannelId();
+            Long id = streamEvent.getId();
 
             String url = processorUrl + "/crawler";
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put("channelId", channelId);
-            requestBody.put("highlightId", id);
+            requestBody.put("streamEventId", id);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -61,11 +61,11 @@ public class ChatService {
         }
     }
 
-    public Highlight collectChats(String channelId, String highlightId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
-        Highlight highlight = highlightRepository.findById(Long.parseLong(highlightId))
+    public StreamEvent collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
+        StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
                 .orElseThrow(() -> new IllegalArgumentException("하이라이트를 찾을 수 없습니다."));
 
-        StreamMetrics metrics = highlight.getMetrics();
+        StreamMetrics metrics = streamEvent.getMetrics();
         String category = metrics.getCategory();
         String title = metrics.getTitle();
         List<String> messages = chatMessagesRequestDTO.getMessages();
@@ -95,7 +95,7 @@ public class ChatService {
                                 new GptMessageDTO("system",
                                         "You are an energetic AI that analyzes live chat reactions from streaming broadcasts. " +
                                                 "Your job is to explain in a short and exciting way what kind of emotions the viewers felt (such as excitement, laughter, surprise, anger, or sadness) and why they reacted that way. " +
-                                                "Keep it short, punchy, and fun like a highlight clip description."
+                                                "Keep it short, punchy, and fun like a StreamEvent clip description."
                                 ),
                                 new GptMessageDTO("assistant",
                                         "시청자들은 예상치 못한 순간에 폭발적으로 반응했어! 멋진 플레이, 웃긴 장면, 감동적인 순간 등 무엇이든 시청자들의 감정을 자극하는 순간에 채팅이 폭발했지. 그 순간을 짧고 강렬하게 요약하면 바로 하이라이트야!"
@@ -120,7 +120,7 @@ public class ChatService {
 //
 //            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
 //                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
-//                highlight.updateSummary(summary);
+//                streamEvent.updateSummary(summary);
 //            } else {
 //                throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
 //            }
@@ -128,7 +128,7 @@ public class ChatService {
 //            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
 //        }
 
-        return highlight;
+        return streamEvent;
 
     }
 

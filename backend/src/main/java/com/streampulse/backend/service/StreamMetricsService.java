@@ -18,7 +18,7 @@ import java.util.List;
 public class StreamMetricsService {
 
     private final StreamMetricsRepository streamMetricsRepository;
-    private final HighlightService highlightService;
+    private final StreamEventService streamEventService;
 
     public void saveMetrics(StreamSession session, LiveResponseDTO dto, Integer averageViewerCount) {
         StreamMetrics metrics = StreamMetrics.builder()
@@ -30,7 +30,7 @@ public class StreamMetricsService {
                 .build();
         metrics = streamMetricsRepository.save(metrics);
         if(metrics.getViewerCount() > averageViewerCount * 1.5) {
-            highlightService.saveHighlight(metrics);
+            streamEventService.saveStreamEvent(metrics);
         }
     }
 
