@@ -1,35 +1,32 @@
 package com.streampulse.backend.entity;
 
+import com.streampulse.backend.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class Notification {
+public class Subscription {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private StreamEvent streamEvent;
+    private DiscordUser discordUser;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Streamer streamer;
+
+    @Enumerated(EnumType.STRING)
+    private EventType eventType;
+
+    private boolean active;
 
     @Column(length = 100)
-    private String receiverId;
-
-    private LocalDateTime sentAt;
-
-    @Column(columnDefinition = "TEXT")
-    private String message;
-
-    private boolean success;
-
-    @Column(length = 500)
-    private String errorMessage;
+    private String keyword;
 
 }

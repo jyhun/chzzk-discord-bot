@@ -10,26 +10,23 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class Notification {
+public class DiscordUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private StreamEvent streamEvent;
+    @Column(length = 100, unique = true)
+    private String discordUserId;
 
     @Column(length = 100)
-    private String receiverId;
+    private String username;
 
-    private LocalDateTime sentAt;
+    private boolean active;
 
-    @Column(columnDefinition = "TEXT")
-    private String message;
+    private LocalDateTime createdAt;
 
-    private boolean success;
-
-    @Column(length = 500)
-    private String errorMessage;
-
+    public void activate() {
+        this.active = true;
+    }
 }

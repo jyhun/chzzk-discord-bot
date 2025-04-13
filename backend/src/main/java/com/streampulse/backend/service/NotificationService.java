@@ -1,17 +1,23 @@
 package com.streampulse.backend.service;
 
-import com.streampulse.backend.entity.StreamEvent;
+import com.streampulse.backend.dto.NotificationRequestDTO;
 import com.streampulse.backend.entity.Notification;
+import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.infra.DiscordNotifier;
 import com.streampulse.backend.repository.NotificationRepository;
+import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @Transactional
@@ -20,7 +26,27 @@ import java.time.format.DateTimeFormatter;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final StreamEventRepository streamEventRepository;
     private final DiscordNotifier discordNotifier;
+    private final RestTemplate restTemplate;
+
+    @Value("${processor.url}")
+    private String processUrl;
+
+    public void saveNotification(NotificationRequestDTO notificationRequestDTO) {
+        StreamEvent streamEvent = streamEventRepository.findById(notificationRequestDTO.getStreamEventId())
+                .orElseThrow(() -> new IllegalArgumentException("방송 이벤트를 찾을 수 없습니다."));
+
+        Notification notification = Notification.builder()
+                .streamEvent(streamEvent)
+                .receiverId(notificationRequestDTO.getReceiverId())
+                .success(notificationRequestDTO.isSuccess())
+                .message(notificationRequestDTO.getMessage())
+                .errorMessage(notificationRequestDTO.getErrorMessage())
+                .build();
+
+        notificationRepository.save(notification);
+    }
 
     public void notifyStreamEvent(StreamEvent streamEvent) {
         String message = generateMessage(streamEvent);
@@ -80,4 +106,15 @@ public class NotificationService {
 
     }
 
+    public void requestSendNotification(StreamEvent streamEvent) {
+        String url = processUrl + "/api/send-notification";
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("streamEventId", streamEvent.getId());
+        payload.put("summary", "summary");
+        payload.put("streamerId", streamEvent.getMetrics().getSession().getStreamer().getChannelId());
+
+        restTemplate.postForEntity(url, payload, Void.class);
+
+    }
 }

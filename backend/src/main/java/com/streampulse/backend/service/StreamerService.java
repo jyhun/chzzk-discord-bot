@@ -86,7 +86,7 @@ public class StreamerService {
                         Streamer.builder()
                                 .channelId(dto.getChannelId())
                                 .nickname(dto.getChannelName())
-                                .averageViewerCount(dto.getConcurrentUserCount())
+//                                .averageViewerCount(dto.getConcurrentUserCount())
                                 .live(false)
                                 .build()));
     }

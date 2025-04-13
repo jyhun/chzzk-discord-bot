@@ -38,6 +38,7 @@ public class ChatService {
 
     private final RestTemplate restTemplate;
     private final StreamEventRepository streamEventRepository;
+    private final NotificationService notificationService;
 
     public void collectChatsForStreamEvent(StreamEvent streamEvent) {
         try {
@@ -127,6 +128,8 @@ public class ChatService {
 //        } catch (Exception e) {
 //            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
 //        }
+
+        notificationService.requestSendNotification(streamEvent);
 
         return streamEvent;
 

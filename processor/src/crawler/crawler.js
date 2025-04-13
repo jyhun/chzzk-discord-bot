@@ -8,7 +8,7 @@ const CHAT_ORIGIN = 'https://chzzk.naver.com';
 const PING_INTERVAL_MS = 60000;
 const COLLECTOR_TIMEOUT_MS = 30000;
 
-async function collectChatsForHighlight(channelId, highlightId) {
+async function collectChatsForStreamEvent(channelId, streamEventId) {
   try {
     const joinPayload = await getJoinPayload(channelId);
     if (!joinPayload) {
@@ -16,7 +16,7 @@ async function collectChatsForHighlight(channelId, highlightId) {
     }
     const messages = await collectChatsOverWebSocket(joinPayload, channelId);
 
-    await sendChatCollectionToBackend(channelId, highlightId, messages);
+    await sendChatCollectionToBackend(channelId, streamEventId, messages);
   } catch (error) {
     console.error(`채팅 수집 프로세스 실행 실패: ${error.message}`);
   }
@@ -136,14 +136,14 @@ function collectChatsOverWebSocket(joinPayload, channelId) {
   });
 }
 
-async function sendChatCollectionToBackend(channelId, highlightId, messages) {
+async function sendChatCollectionToBackend(channelId, streamEventId, messages) {
   const payload = { messages };
   try {
-    await axios.post(`${process.env.BACKEND_BASE_URL}/api/chat/${channelId}/${highlightId}`, payload);
-    console.log(`최종 HTTP 요청 전송 완료 (채널: ${channelId}, 하이라이트: ${highlightId})`);
+    await axios.post(`${process.env.BACKEND_BASE_URL}/api/chat/${channelId}/${streamEventId}`, payload);
+    console.log(`최종 HTTP 요청 전송 완료 (채널: ${channelId}, 하이라이트: ${streamEventId})`);
   } catch (error) {
     console.error(`HTTP 요청 오류: ${error.message}`);
   }
 }
 
-module.exports = { collectChatsForHighlight };
+module.exports = { collectChatsForStreamEvent };

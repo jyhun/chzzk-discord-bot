@@ -18,9 +18,6 @@ public class StreamEvent {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private StreamSession session;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     private StreamMetrics metrics;
 
     @Enumerated(EnumType.STRING)

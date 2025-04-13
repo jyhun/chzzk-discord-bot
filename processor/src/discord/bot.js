@@ -1,7 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, Events, MessageFlags } = require('discord.js');
 const commands = require('./commands');
-const { collectChatsForHighlight } = require('../crawler/crawler');
+const axios = require('axios');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -36,14 +36,17 @@ async function startBot() {
 
   client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isCommand()) return;
-    const { commandName, options, user } = interaction;
+    const { commandName, options, user, channel,channelId } = interaction;
+
+    console.log(channel);
+    console.log(channelId);
 
     if (commandName === 'help') {
       try {
         await interaction.reply({
           content: '사용 가능한 명령어:\n' +
                    '/help - 명령어 도움말\n' +
-                   '/highlight all - 전체 방송자 하이라이트 감지\n',
+                   '/hot all - 전체 방송자 실시간 급상승 감지 구독\n',
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
@@ -51,20 +54,29 @@ async function startBot() {
       }
     }
 
-    if (commandName === 'highlight') {
+    if (commandName === 'hot') {
       const subcommand = options.getSubcommand();
       if (subcommand === 'all') {
-        console.info(`[Highlight All] ${user.username} (${user.id}) 실행`);
+        console.info(`[Hot All] ${user.username} (${user.id}) 실행`);
+
         try {
-          await collectChatsForHighlight('all', null);
+          await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
+            discordUserId: user.id,
+            username: user.username,
+            streamerId: null,
+            eventType: 'HOT',
+            keyword: null
+          });
+
           await interaction.reply({
-            content: '전체 방송자 하이라이트 감지를 시작했습니다!',
+            content: '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.',
             flags: MessageFlags.Ephemeral
           });
         } catch (error) {
-          console.error('[Highlight All] 오류:', error);
+          console.error('[Hot All] 오류:', error.response?.data || error.message);
+
           await interaction.reply({
-            content: '크롤러 실행 중 오류 발생',
+            content: '구독 처리 중 오류가 발생했습니다.',
             flags: MessageFlags.Ephemeral
           });
         }
@@ -84,3 +96,4 @@ process.on('unhandledRejection', error => {
 });
 
 module.exports = startBot;
+module.exports.client = client;
