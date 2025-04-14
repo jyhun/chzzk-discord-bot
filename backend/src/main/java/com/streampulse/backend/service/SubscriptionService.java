@@ -72,7 +72,7 @@ public class SubscriptionService {
 
         return subscriptions.stream()
                 .map(sub -> SubscriptionResponseDTO.builder()
-                        .discordChannelId(sub.getDiscordChannel().getDiscordGuildId())
+                        .discordGuildId(sub.getDiscordChannel().getDiscordGuildId())
                         .discordChannelId(sub.getDiscordChannel().getDiscordChannelId())
                         .build())
                 .collect(Collectors.toList());

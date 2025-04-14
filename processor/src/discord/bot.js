@@ -43,7 +43,8 @@ async function startBot() {
         await interaction.reply({
           content: '사용 가능한 명령어:\n' +
             '/help - 명령어 도움말\n' +
-            '/hot all - 전체 방송자 실시간 급상승 감지 구독\n',
+            '/hot all - 전체 방송자 실시간 급상승 감지 구독\n' +
+            '/hot <방송자 채널ID> - 특정 방송자 실시간 급상승 감지 구독\n',
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
@@ -52,31 +53,44 @@ async function startBot() {
     }
 
     if (commandName === 'hot') {
-      const subcommand = options.getSubcommand();
-      if (subcommand === 'all') {
-        console.info(`[Hot All] 요청 채널: ${channel.name} (${channelId})`);
+      const target = options.getString('target');
 
-        try {
-          await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
-            discordGuildId: interaction.guildId,
-            discordChannelId: interaction.channelId,
-            streamerId: null,
-            eventType: 'HOT',
-            keyword: null
-          });
+      console.info(`[Hot Command] 요청 채널: ${channel.name} (${channelId}), target: ${target}`);
 
-          await interaction.reply({
-            content: '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.',
-            flags: MessageFlags.Ephemeral
-          });
-        } catch (error) {
-          console.error('[Hot All] 오류:', error.response?.data || error.message);
+      if (!target) {
+        return interaction.reply({
+          content: '구독 대상을 입력해주세요! (예: all 또는 방송자 채널ID)',
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-          await interaction.reply({
-            content: '구독 처리 중 오류가 발생했습니다.',
-            flags: MessageFlags.Ephemeral
-          });
-        }
+      // target 이 all 이면 전체 방송자 구독, 아니면 특정 방송자 구독
+      const streamerId = target.toLowerCase() === 'all' ? null : target;
+
+      try {
+        await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
+          discordGuildId: interaction.guildId,
+          discordChannelId: interaction.channelId,
+          streamerId,
+          eventType: 'HOT',
+          keyword: null
+        });
+
+        const successMessage = streamerId
+          ? `채널 **${streamerId}** 실시간 급상승 알림 구독이 완료되었습니다.`
+          : '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.';
+
+        await interaction.reply({
+          content: successMessage,
+          flags: MessageFlags.Ephemeral
+        });
+      } catch (error) {
+        console.error('[Hot Command] 오류:', error.response?.data || error.message);
+
+        await interaction.reply({
+          content: '구독 처리 중 오류가 발생했습니다.',
+          flags: MessageFlags.Ephemeral
+        });
       }
     }
   });
