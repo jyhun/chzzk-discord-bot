@@ -87,13 +87,14 @@ public class ChzzkOpenApiClient {
                 log.warn("방송자 목록이 비어 있어 종료합니다.");
                 break;
             }
-            int viewerCount = data.get(data.size() - 1).getConcurrentUserCount();
-            if (viewerCount < 1000) {
-                log.info("시청자 수 {}명 이하. 종료.", viewerCount);
-                break;
-            }
+            int lastViewerCount = data.get(data.size() - 1).getConcurrentUserCount();
             liveList.addAll(data);
             currentNode = new Node(nextCursor, currentNode);
+            if (lastViewerCount < 1000) {
+                log.info("시청자 수 {}명 이하. 종료.", lastViewerCount);
+                break;
+            }
+
         }
         return liveList;
     }

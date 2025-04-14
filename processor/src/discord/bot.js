@@ -36,17 +36,14 @@ async function startBot() {
 
   client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isCommand()) return;
-    const { commandName, options, user, channel,channelId } = interaction;
-
-    console.log(channel);
-    console.log(channelId);
+    const { commandName, options, channel, channelId } = interaction;
 
     if (commandName === 'help') {
       try {
         await interaction.reply({
           content: '사용 가능한 명령어:\n' +
-                   '/help - 명령어 도움말\n' +
-                   '/hot all - 전체 방송자 실시간 급상승 감지 구독\n',
+            '/help - 명령어 도움말\n' +
+            '/hot all - 전체 방송자 실시간 급상승 감지 구독\n',
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
@@ -57,12 +54,12 @@ async function startBot() {
     if (commandName === 'hot') {
       const subcommand = options.getSubcommand();
       if (subcommand === 'all') {
-        console.info(`[Hot All] ${user.username} (${user.id}) 실행`);
+        console.info(`[Hot All] 요청 채널: ${channel.name} (${channelId})`);
 
         try {
           await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
-            discordUserId: user.id,
-            username: user.username,
+            discordGuildId: interaction.guildId,
+            discordChannelId: interaction.channelId,
             streamerId: null,
             eventType: 'HOT',
             keyword: null

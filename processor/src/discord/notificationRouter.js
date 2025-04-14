@@ -29,26 +29,26 @@ function createNotificationRouter(client) {
         const message = `[HOT] 방송자가 급상승했습니다!\n\n${summary}`;
 
         try {
-          const user = await client.users.fetch(subscriber.discordUserId);
-          await user.send(message);
+          const channel = await client.channels.fetch(subscriber.discordChannelId);
+          await channel.send(message);
 
           // 3. 알림 결과 저장 (성공)
           await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
             streamEventId,
-            receiverId: subscriber.discordUserId,
+            receiverId: subscriber.discordChannelId, 
             success: true,
             message,
             errorMessage: null
           });
 
-          console.info(`[Send Notification] 알림 성공: ${subscriber.discordUserId}`);
+          console.info(`[Send Notification] 알림 성공: ${subscriber.discordChannelId}`);
         } catch (error) {
-          console.error(`[Send Notification] 알림 실패: ${subscriber.discordUserId}`, error.message);
+          console.error(`[Send Notification] 알림 실패: ${subscriber.discordChannelId}`, error.message);
 
           // 3. 알림 결과 저장 (실패)
           await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
             streamEventId,
-            receiverId: subscriber.discordUserId,
+            receiverId: subscriber.discordChannelId,
             success: false,
             message,
             errorMessage: error.message

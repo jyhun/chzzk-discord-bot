@@ -10,17 +10,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class DiscordUser {
+public class DiscordChannel {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(length = 100, unique = true)
-    private String discordUserId;
-
     @Column(length = 100)
-    private String username;
+    private String discordGuildId;
+
+    @Column(length = 100, unique = true)
+    private String discordChannelId;
 
     private boolean active;
 

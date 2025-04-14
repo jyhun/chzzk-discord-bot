@@ -9,6 +9,6 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class SubscriptionResponseDTO {
-    private String discordUserId;
-    private String username;
+    private String discordGuildId;
+    private String discordChannelId;
 }

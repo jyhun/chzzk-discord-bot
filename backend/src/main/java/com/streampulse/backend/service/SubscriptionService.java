@@ -2,11 +2,11 @@ package com.streampulse.backend.service;
 
 import com.streampulse.backend.dto.SubscriptionRequestDTO;
 import com.streampulse.backend.dto.SubscriptionResponseDTO;
-import com.streampulse.backend.entity.DiscordUser;
+import com.streampulse.backend.entity.DiscordChannel;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.entity.Subscription;
 import com.streampulse.backend.enums.EventType;
-import com.streampulse.backend.repository.DiscordUserRepository;
+import com.streampulse.backend.repository.DiscordChannelRepository;
 import com.streampulse.backend.repository.StreamerRepository;
 import com.streampulse.backend.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
@@ -26,26 +26,26 @@ public class SubscriptionService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final StreamerRepository streamerRepository;
-    private final DiscordUserRepository discordUserRepository;
+    private final DiscordChannelRepository discordChannelRepository;
 
     public void createSubscription(SubscriptionRequestDTO subscriptionRequestDTO) {
-        DiscordUser discordUser = discordUserRepository.findByDiscordUserId(subscriptionRequestDTO.getDiscordUserId())
-                .orElseGet(() -> discordUserRepository.save(
-                        DiscordUser.builder()
-                                .discordUserId(subscriptionRequestDTO.getDiscordUserId())
-                                .username(subscriptionRequestDTO.getUsername())
+        DiscordChannel discordChannel = discordChannelRepository.findByDiscordChannelId(subscriptionRequestDTO.getDiscordChannelId())
+                .orElseGet(() -> discordChannelRepository.save(
+                        DiscordChannel.builder()
+                                .discordGuildId(subscriptionRequestDTO.getDiscordGuildId())
+                                .discordChannelId(subscriptionRequestDTO.getDiscordChannelId())
                                 .active(true)
                                 .build()));
 
         Streamer streamer = null;
 
-        if(subscriptionRequestDTO.getStreamerId() != null) {
+        if (subscriptionRequestDTO.getStreamerId() != null) {
             streamer = streamerRepository.findByChannelId(subscriptionRequestDTO.getStreamerId())
                     .orElseThrow(() -> new IllegalArgumentException("방송자를 찾을 수 없습니다."));
         }
 
         Subscription subscription = Subscription.builder()
-                .discordUser(discordUser)
+                .discordChannel(discordChannel)
                 .streamer(streamer)
                 .eventType(subscriptionRequestDTO.getEventType())
                 .keyword(subscriptionRequestDTO.getKeyword())
@@ -71,10 +71,10 @@ public class SubscriptionService {
         subscriptions.addAll(subscriptionRepository.findByStreamerIsNullAndEventTypeAndActiveTrue(eventType));
 
         return subscriptions.stream()
-                .map(sub -> new SubscriptionResponseDTO(
-                        sub.getDiscordUser().getDiscordUserId(),
-                        sub.getDiscordUser().getUsername()
-                ))
+                .map(sub -> SubscriptionResponseDTO.builder()
+                        .discordChannelId(sub.getDiscordChannel().getDiscordGuildId())
+                        .discordChannelId(sub.getDiscordChannel().getDiscordChannelId())
+                        .build())
                 .collect(Collectors.toList());
     }
 }

@@ -16,7 +16,7 @@ public class Subscription {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private DiscordUser discordUser;
+    private DiscordChannel discordChannel;
 
     @ManyToOne(fetch = FetchType.LAZY)
     private Streamer streamer;

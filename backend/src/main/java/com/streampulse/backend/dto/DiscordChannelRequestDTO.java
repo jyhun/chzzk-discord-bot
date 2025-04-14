@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-public class DiscordUserRequestDTO {
-    private String discordUserId;
-    private String username;
+public class DiscordChannelRequestDTO {
+    private String discordGuildId;
+    private String discordChannelId;
 }

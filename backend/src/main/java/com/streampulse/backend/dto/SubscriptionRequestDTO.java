@@ -9,8 +9,8 @@ import lombok.*;
 @NoArgsConstructor
 @Builder
 public class SubscriptionRequestDTO {
-    private String discordUserId;
-    private String username;
+    private String discordGuildId;
+    private String discordChannelId;
     private String streamerId;
     private EventType eventType;
     private String keyword;
