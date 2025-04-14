@@ -77,7 +77,7 @@ async function startBot() {
         });
 
         const successMessage = streamerId
-          ? `채널 **${streamerId}** 실시간 급상승 알림 구독이 완료되었습니다.`
+          ? `방송자 채널 **${streamerId}** 실시간 급상승 알림 구독이 완료되었습니다.`
           : '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.';
 
         await interaction.reply({
@@ -85,12 +85,26 @@ async function startBot() {
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
-        console.error('[Hot Command] 오류:', error.response?.data || error.message);
+        const status = error.response?.status;
+        const errorMessage = error.response?.data;
 
-        await interaction.reply({
-          content: '구독 처리 중 오류가 발생했습니다.',
-          flags: MessageFlags.Ephemeral
-        });
+        if (status === 409) {
+          await interaction.reply({
+            content: '이미 구독 중인 대상입니다!',
+            flags: MessageFlags.Ephemeral
+          });
+        } else if (status === 400) {
+          await interaction.reply({
+            content: `잘못된 요청입니다: ${errorMessage}`,
+            flags: MessageFlags.Ephemeral
+          });
+        } else {
+          console.error('[Hot Command] 오류:', errorMessage || error.message);
+          await interaction.reply({
+            content: '구독 처리 중 오류가 발생했습니다.',
+            flags: MessageFlags.Ephemeral
+          });
+        }
       }
     }
   });

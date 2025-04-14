@@ -6,6 +6,7 @@ import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,8 +22,14 @@ public class SubscriptionController {
 
     @PostMapping
     public ResponseEntity<String> createSubscription(@RequestBody SubscriptionRequestDTO subscriptionRequestDTO) {
-        subscriptionService.createSubscription(subscriptionRequestDTO);
-        return ResponseEntity.ok("구독 저장 성공");
+        try {
+            subscriptionService.createSubscription(subscriptionRequestDTO);
+            return ResponseEntity.ok("구독 저장 성공");
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
 
     @GetMapping

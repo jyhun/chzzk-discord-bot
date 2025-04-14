@@ -44,6 +44,29 @@ public class SubscriptionService {
                     .orElseThrow(() -> new IllegalArgumentException("방송자를 찾을 수 없습니다."));
         }
 
+        boolean exists;
+        if (streamer == null) {
+            // Global 구독 중복 확인
+            exists = subscriptionRepository.existsGlobalSubscription(
+                    subscriptionRequestDTO.getDiscordChannelId(),
+                    subscriptionRequestDTO.getEventType()
+            );
+        } else {
+            // 특정 방송자 구독 중복 확인
+            exists = subscriptionRepository.existsStreamerSubscription(
+                    subscriptionRequestDTO.getDiscordChannelId(),
+                    streamer.getChannelId(),
+                    subscriptionRequestDTO.getEventType()
+            );
+        }
+
+        if (exists) {
+            log.info("이미 구독 중입니다. discordChannelId={}, streamerId={}",
+                    subscriptionRequestDTO.getDiscordChannelId(),
+                    subscriptionRequestDTO.getStreamerId());
+            throw new IllegalStateException("이미 구독 중인 대상입니다.");
+        }
+
         Subscription subscription = Subscription.builder()
                 .discordChannel(discordChannel)
                 .streamer(streamer)
@@ -65,10 +88,10 @@ public class SubscriptionService {
         List<Subscription> subscriptions = new ArrayList<>();
 
         // 방송자 구독자
-        subscriptions.addAll(subscriptionRepository.findByStreamer_ChannelIdAndEventTypeAndActiveTrue(streamerId, eventType));
+        subscriptions.addAll(subscriptionRepository.findStreamerSubscriptionsByEventType(streamerId, eventType));
 
         // global 구독자
-        subscriptions.addAll(subscriptionRepository.findByStreamerIsNullAndEventTypeAndActiveTrue(eventType));
+        subscriptions.addAll(subscriptionRepository.findGlobalSubscriptionsByEventType(eventType));
 
         return subscriptions.stream()
                 .map(sub -> SubscriptionResponseDTO.builder()
