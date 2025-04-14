@@ -29,4 +29,8 @@ public class Subscription {
     @Column(length = 100)
     private String keyword;
 
+    public void deactivate() {
+        this.active = false;
+    }
+
 }

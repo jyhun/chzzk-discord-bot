@@ -23,6 +23,17 @@ async function registerCommands() {
   }
 }
 
+// 공통 error handler
+async function handleError(interaction, context, error) {
+  const errorMessage = error.response?.data || error.message;
+  console.error(`[${context}] 오류:`, errorMessage);
+
+  await interaction.reply({
+    content: `오류가 발생했습니다: ${errorMessage}`,
+    flags: MessageFlags.Ephemeral
+  });
+}
+
 async function startBot() {
   try {
     await registerCommands();
@@ -36,36 +47,32 @@ async function startBot() {
 
   client.on(Events.InteractionCreate, async interaction => {
     if (!interaction.isCommand()) return;
-    const { commandName, options, channel, channelId } = interaction;
 
+    const { commandName, options, channel, channelId } = interaction;
+    console.info(`[Command] ${commandName} 요청: 채널 ${channel.name} (${channelId})`);
+
+    // help
     if (commandName === 'help') {
       try {
         await interaction.reply({
           content: '사용 가능한 명령어:\n' +
             '/help - 명령어 도움말\n' +
-            '/hot all - 전체 방송자 실시간 급상승 감지 구독\n' +
-            '/hot <방송자 채널ID> - 특정 방송자 실시간 급상승 감지 구독\n',
+            '/hot - 전체 방송자 급상승 알림 구독\n' +
+            '/hot <방송자 채널ID> - 특정 방송자 급상승 알림 구독\n' +
+            '/unsubscribe - 전체 구독 해제\n' +
+            '/unsubscribe HOT - HOT 이벤트 전체 구독 해제\n' +
+            '/unsubscribe HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 해제\n',
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
-        console.error('[Help Command] 오류:', error);
+        await handleError(interaction, 'Help Command', error);
       }
     }
 
+    // hot
     if (commandName === 'hot') {
-      const target = options.getString('target');
-
-      console.info(`[Hot Command] 요청 채널: ${channel.name} (${channelId}), target: ${target}`);
-
-      if (!target) {
-        return interaction.reply({
-          content: '구독 대상을 입력해주세요! (예: all 또는 방송자 채널ID)',
-          flags: MessageFlags.Ephemeral
-        });
-      }
-
-      // target 이 all 이면 전체 방송자 구독, 아니면 특정 방송자 구독
-      const streamerId = target.toLowerCase() === 'all' ? null : target;
+      const target = options.getString('target'); // optional
+      const streamerId = target?.toLowerCase() === 'all' || !target ? null : target;
 
       try {
         await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
@@ -76,35 +83,57 @@ async function startBot() {
           keyword: null
         });
 
-        const successMessage = streamerId
+        const message = streamerId
           ? `방송자 채널 **${streamerId}** 실시간 급상승 알림 구독이 완료되었습니다.`
           : '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.';
 
         await interaction.reply({
-          content: successMessage,
+          content: message,
           flags: MessageFlags.Ephemeral
         });
       } catch (error) {
         const status = error.response?.status;
-        const errorMessage = error.response?.data;
-
         if (status === 409) {
           await interaction.reply({
             content: '이미 구독 중인 대상입니다!',
             flags: MessageFlags.Ephemeral
           });
-        } else if (status === 400) {
-          await interaction.reply({
-            content: `잘못된 요청입니다: ${errorMessage}`,
-            flags: MessageFlags.Ephemeral
-          });
         } else {
-          console.error('[Hot Command] 오류:', errorMessage || error.message);
-          await interaction.reply({
-            content: '구독 처리 중 오류가 발생했습니다.',
-            flags: MessageFlags.Ephemeral
-          });
+          await handleError(interaction, 'Hot Command', error);
         }
+      }
+    }
+
+    // unsubscribe
+    if (commandName === 'unsubscribe') {
+      const event = options.getString('event'); // optional
+      const target = options.getString('target'); // optional
+      const streamerId = target?.toLowerCase() === 'all' || !target ? null : target;
+
+      try {
+        await axios.delete(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
+          data: {
+            discordGuildId: interaction.guildId,
+            discordChannelId: interaction.channelId,
+            streamerId,
+            eventType: event,
+            keyword: null
+          }
+        });
+
+        let message = '전체 구독이 해제되었습니다.';
+        if (event && streamerId) {
+          message = `방송자 **${streamerId}** 의 ${event} 알림 구독이 해제되었습니다.`;
+        } else if (event) {
+          message = `${event} 이벤트 전체 구독이 해제되었습니다.`;
+        }
+
+        await interaction.reply({
+          content: message,
+          flags: MessageFlags.Ephemeral
+        });
+      } catch (error) {
+        await handleError(interaction, 'Unsubscribe Command', error);
       }
     }
   });
