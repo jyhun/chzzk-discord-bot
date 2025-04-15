@@ -4,6 +4,9 @@ import com.streampulse.backend.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -26,8 +29,9 @@ public class Subscription {
 
     private boolean active;
 
-    @Column(length = 100)
-    private String keyword;
+    @OneToMany(mappedBy = "subscription", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<Keyword> keywords = new ArrayList<>();
 
     public void deactivate() {
         this.active = false;

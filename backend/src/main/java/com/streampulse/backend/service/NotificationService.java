@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.NotificationRequestDTO;
 import com.streampulse.backend.entity.Notification;
 import com.streampulse.backend.entity.StreamEvent;
@@ -19,6 +20,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -56,6 +58,21 @@ public class NotificationService {
         Map<String, String> payload = new HashMap<>();
         payload.put("streamerId", channelId);
         payload.put("eventType", eventType.name());
+        restTemplate.postForEntity(url, payload, Void.class);
+    }
+
+    public void requestChangeEventNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
+        String url = processorUrl + "/api/stream-change";
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("streamerId", streamerChannelId);
+        payload.put("discordChannelId", discordChannelId);
+        payload.put("eventType", EventType.CHANGE.name());
+        payload.put("keywords", matchedKeywords);
+        payload.put("title", dto.getLiveTitle());
+        payload.put("category", dto.getLiveCategoryValue());
+        payload.put("tags", dto.getTags());
+
         restTemplate.postForEntity(url, payload, Void.class);
     }
 

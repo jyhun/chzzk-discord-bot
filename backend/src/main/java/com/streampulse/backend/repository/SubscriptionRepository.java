@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
 
@@ -93,5 +94,31 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
             "AND s.active = true")
     List<Subscription> findActiveByChannel(@Param("discordChannelId") String discordChannelId);
+
+    @Query("SELECT s FROM Subscription s " +
+            "WHERE s.streamer.channelId = :channelId " +
+            "AND s.eventType = :eventType " +
+            "AND s.active = true")
+    List<Subscription> findByStreamer_ChannelIdAndEventTypeAndActiveTrue(
+            @Param("channelId") String channelId,
+            @Param("eventType") EventType eventType);
+
+    @Query("SELECT s FROM Subscription s " +
+            "WHERE s.streamer IS NULL " +
+            "AND s.eventType = :eventType " +
+            "AND s.active = true")
+    List<Subscription> findByStreamerIsNullAndEventTypeAndActiveTrue(@Param("eventType") EventType eventType);
+
+    @Query("SELECT s FROM Subscription s " +
+            "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
+            "AND (:streamerChannelId IS NULL AND s.streamer IS NULL OR s.streamer.channelId = :streamerChannelId) " +
+            "AND s.eventType = :eventType " +
+            "AND s.active = true")
+    Optional<Subscription> findActiveByChannelAndStreamerAndEventType(
+            @Param("discordChannelId") String discordChannelId,
+            @Param("streamerChannelId") String streamerChannelId,
+            @Param("eventType") EventType eventType
+    );
+
 
 }
