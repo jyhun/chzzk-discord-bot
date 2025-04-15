@@ -4,6 +4,7 @@ import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.StreamerRequestDTO;
 import com.streampulse.backend.dto.StreamerResponseDTO;
 import com.streampulse.backend.entity.Streamer;
+import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.StreamerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class StreamerService {
 
     private final StreamerRepository streamerRepository;
     private final StreamSessionService streamSessionService;
+    private final NotificationService notificationService;
 
     public StreamerResponseDTO registerStreamer(StreamerRequestDTO streamerRequestDTO) {
         Streamer streamer = Streamer.builder()
@@ -100,9 +102,8 @@ public class StreamerService {
         List<Streamer> streamerList = streamerRepository.findByLiveIsTrue();
         for (Streamer streamer : streamerList) {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
-                streamer.updateLive(false);
-                streamerRepository.save(streamer);
-
+                updateLiveStatus(streamer, false);
+                notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.END);
                 streamSessionService.handleStreamEnd(streamer);
             }
         }

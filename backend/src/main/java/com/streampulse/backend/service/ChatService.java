@@ -129,7 +129,7 @@ public class ChatService {
 //            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
 //        }
 
-        notificationService.requestSendNotification(streamEvent);
+        notificationService.requestStreamHotNotification(streamEvent);
 
         return streamEvent;
 

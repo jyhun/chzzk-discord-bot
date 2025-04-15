@@ -95,16 +95,28 @@ async function startBot() {
       if (commandName === 'help') {
         await interaction.reply({
           content: [
-            ' 사용 가능한 명령어:',
+            '사용 가능한 명령어:',
             '/help - 명령어 도움말',
             '/subscribe HOT - 전체 방송자 실시간 급상승 감지 구독',
             '/subscribe HOT <방송자 채널ID> - 특정 방송자 구독',
+            '/subscribe START - 전체 방송자 방송 시작 감지 구독',
+            '/subscribe START <방송자 채널ID> - 특정 방송자 방송 시작 구독',
+            '/subscribe END - 전체 방송자 방송 종료 감지 구독',
+            '/subscribe END <방송자 채널ID> - 특정 방송자 방송 종료 구독',
             '/unsubscribe - 전체 구독 해제',
             '/unsubscribe HOT - HOT 이벤트 전체 구독 해제',
             '/unsubscribe HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 해제',
+            '/unsubscribe START - START 이벤트 전체 구독 해제',
+            '/unsubscribe START <방송자 채널ID> - START 이벤트 특정 방송자 구독 해제',
+            '/unsubscribe END - END 이벤트 전체 구독 해제',
+            '/unsubscribe END <방송자 채널ID> - END 이벤트 특정 방송자 구독 해제',
             '/subscriptions - 전체 구독 조회',
             '/subscriptions HOT - HOT 이벤트 구독 조회',
-            '/subscriptions HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 조회'
+            '/subscriptions START - START 이벤트 구독 조회',
+            '/subscriptions END - END 이벤트 구독 조회',
+            '/subscriptions HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 조회',
+            '/subscriptions START <방송자 채널ID> - START 이벤트 특정 방송자 구독 조회',
+            '/subscriptions END <방송자 채널ID> - END 이벤트 특정 방송자 구독 조회',
           ].join('\n'),
           flags: MessageFlags.Ephemeral
         });

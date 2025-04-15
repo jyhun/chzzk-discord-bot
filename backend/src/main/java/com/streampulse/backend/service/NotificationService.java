@@ -4,6 +4,7 @@ import com.streampulse.backend.dto.NotificationRequestDTO;
 import com.streampulse.backend.entity.Notification;
 import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
+import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.DiscordNotifier;
 import com.streampulse.backend.repository.NotificationRepository;
 import com.streampulse.backend.repository.StreamEventRepository;
@@ -32,7 +33,7 @@ public class NotificationService {
     private final RestTemplate restTemplate;
 
     @Value("${processor.url}")
-    private String processUrl;
+    private String processorUrl;
 
     public void saveNotification(NotificationRequestDTO notificationRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(notificationRequestDTO.getStreamEventId())
@@ -49,8 +50,18 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    public void requestSendNotification(StreamEvent streamEvent) {
-        String url = processUrl + "/api/send-notification";
+    public void requestStreamStatusNotification(String channelId, EventType eventType) {
+        String url = processorUrl + "/api/stream-status";
+
+        Map<String, String> payload = new HashMap<>();
+        payload.put("streamerId", channelId);
+        payload.put("eventType", eventType.name());
+        restTemplate.postForEntity(url, payload, Void.class);
+    }
+
+
+    public void requestStreamHotNotification(StreamEvent streamEvent) {
+        String url = processorUrl + "/api/send-notification";
 
         // 한국 시간대로 시간대 설정
         ZoneId seoulZoneId = ZoneId.of("Asia/Seoul");

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 
-const EVENT_DESC = '이벤트 종류 (HOT, START, END, CHANGE)';
-const TARGET_DESC = '방송자 채널 ID';
+const EVENT_DESC = '이벤트 종류 (HOT: 급상승, START: 방송 시작, END: 방송 종료, CHANGE: 카테고리 변경)';
+const TARGET_DESC = '방송자 채널 ID (비워두면 전체 방송자)';
 
 const commands = [
 
@@ -10,10 +10,10 @@ const commands = [
     .setName('help')
     .setDescription('사용 가능한 명령어를 안내합니다.'),
 
-  // /subscribe HOT [target]
+  // /subscribe
   new SlashCommandBuilder()
     .setName('subscribe')
-    .setDescription('이벤트 구독')
+    .setDescription('이벤트 구독 - 예: /subscribe START 또는 /subscribe HOT <채널ID>')
     .addStringOption(option =>
       option.setName('event')
         .setDescription(EVENT_DESC)
@@ -25,10 +25,10 @@ const commands = [
         .setRequired(false)
     ),
 
-  // /unsubscribe [event] [target]
+  // /unsubscribe
   new SlashCommandBuilder()
     .setName('unsubscribe')
-    .setDescription('구독 해제')
+    .setDescription('구독 해제 - 예: /unsubscribe START <채널ID>')
     .addStringOption(option =>
       option.setName('event')
         .setDescription(EVENT_DESC)
@@ -40,10 +40,10 @@ const commands = [
         .setRequired(false)
     ),
 
-  // /subscriptions [event] [target]
+  // /subscriptions
   new SlashCommandBuilder()
     .setName('subscriptions')
-    .setDescription('구독 목록 조회')
+    .setDescription('구독 목록 조회 - 예: /subscriptions HOT')
     .addStringOption(option =>
       option.setName('event')
         .setDescription(EVENT_DESC)

@@ -6,11 +6,14 @@ const { collectChatsForStreamEvent } = require('./crawler/crawler');
 const startBot = require('./discord/bot');
 const { client } = require('./discord/bot');
 const createNotificationRouter = require('./discord/notificationRouter');
+const createStreamStatusRouter = require('./discord/stream-status');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use('/api', createNotificationRouter(client));
+app.use('/api', createStreamStatusRouter(client));
 
 // /crawler API: 채널 ID와 하이라이트 ID를 받아 크롤러를 실행합니다.
 app.post('/crawler', async (req, res) => {
@@ -31,8 +34,6 @@ app.post('/crawler', async (req, res) => {
     res.status(500).json({ error: '채팅 수집 실행 실패' });
   }
 });
-
-app.use('/api', createNotificationRouter(client));
 
 app.listen(3001, () => {
   console.log('processor 서버 실행 시작 (포트: 3001)');

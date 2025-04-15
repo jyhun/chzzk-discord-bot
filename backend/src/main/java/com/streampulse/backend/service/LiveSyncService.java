@@ -3,6 +3,7 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
+import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.ChzzkOpenApiClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class LiveSyncService {
     private final StreamerService streamerService;
     private final StreamSessionService streamSessionService;
     private final StreamMetricsService streamMetricsService;
+    private final NotificationService notificationService;
 
     public void syncLiveBroadcasts() {
         Set<String> liveStreamerChannelIds = new HashSet<>();
@@ -35,6 +37,7 @@ public class LiveSyncService {
 
             if (!streamer.isLive()) {
                 streamerService.updateLiveStatus(streamer, true);
+                notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.START);
             }
 
             streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
