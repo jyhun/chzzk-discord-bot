@@ -21,11 +21,12 @@ public class SubscriptionController {
 
     private final SubscriptionService subscriptionService;
 
+    // 구독 생성
     @PostMapping
-    public ResponseEntity<Map<String, String>> createSubscription(@RequestBody SubscriptionRequestDTO subscriptionRequestDTO) {
+    public ResponseEntity<Map<String, String>> createSubscription(@RequestBody SubscriptionRequestDTO request) {
         try {
-            subscriptionService.createSubscription(subscriptionRequestDTO);
-            return ResponseEntity.ok(Map.of("message", "구독 저장 성공"));
+            subscriptionService.createSubscription(request);
+            return ResponseEntity.ok(Map.of("message", "구독이 성공적으로 저장되었습니다."));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         } catch (IllegalArgumentException e) {
@@ -33,22 +34,28 @@ public class SubscriptionController {
         }
     }
 
-    @GetMapping
-    public List<SubscriptionResponseDTO> getSubscriptions(
-            @RequestParam(required = false) String streamerId,
-            @RequestParam EventType eventType
-    ) {
-        log.info("controller streamerId: {}, eventType: {}", streamerId, eventType);
-        return subscriptionService.getSubscriptions(streamerId, eventType);
-    }
-
+    // 구독 해제
     @DeleteMapping
-    public ResponseEntity<Map<String, String>> deleteSubscription(@RequestBody SubscriptionRequestDTO dto) {
+    public ResponseEntity<Map<String, String>> deleteSubscription(@RequestBody SubscriptionRequestDTO request) {
         try {
-            subscriptionService.deactivateSubscription(dto);
-            return ResponseEntity.ok(Map.of("message", "구독이 해제되었습니다."));
+            subscriptionService.deactivateSubscription(request);
+            return ResponseEntity.ok(Map.of("message", "구독이 성공적으로 해제되었습니다."));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // (봇 + 내부용) 구독 목록 조회 (디스코드 채널 ID 있으면 봇용 / 없으면 내부용)
+    @GetMapping
+    public List<SubscriptionResponseDTO> getSubscriptions(
+            @RequestParam(required = false) String discordChannelId,
+            @RequestParam(required = false) String streamerId,
+            @RequestParam(required = false) EventType eventType
+    ) {
+        if (discordChannelId != null) {
+            return subscriptionService.getMySubscriptions(discordChannelId, streamerId, eventType);
+        } else {
+            return subscriptionService.getSubscriptions(streamerId, eventType);
         }
     }
 

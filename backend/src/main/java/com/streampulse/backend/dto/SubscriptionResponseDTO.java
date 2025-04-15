@@ -1,6 +1,7 @@
 package com.streampulse.backend.dto;
 
 
+import com.streampulse.backend.enums.EventType;
 import lombok.*;
 
 @Getter
@@ -11,4 +12,6 @@ import lombok.*;
 public class SubscriptionResponseDTO {
     private String discordGuildId;
     private String discordChannelId;
+    private String streamerId;
+    private EventType eventType;
 }

@@ -4,16 +4,49 @@ const commands = require('./commands');
 const axios = require('axios');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const VALID_EVENT_TYPES = ['HOT', 'START', 'END', 'CHANGE'];
 
+// 공통 에러 핸들러
+async function handleError(interaction, context, error) {
+  const errorMessage = error.response?.data || error.message;
+  console.error(`[${context}] 오류:`, errorMessage);
+
+  const replyPayload = {
+    content: `오류가 발생했습니다: ${errorMessage}`,
+    flags: MessageFlags.Ephemeral,
+  };
+
+  if (!interaction.replied) {
+    await interaction.reply(replyPayload);
+  } else {
+    await interaction.followUp(replyPayload);
+  }
+}
+
+// 이벤트 타입 파싱 함수 (명령어 별 required 여부 적용)
+function parseEventType(rawEventType, isRequired = false) {
+  if (!rawEventType) {
+    if (isRequired) {
+      throw new Error(`이벤트 타입이 필요합니다. 사용 가능한 이벤트: ${VALID_EVENT_TYPES.join(', ')}`);
+    }
+    return null;
+  }
+
+  const eventType = rawEventType.toUpperCase();
+  if (!VALID_EVENT_TYPES.includes(eventType)) {
+    throw new Error(`잘못된 이벤트 타입입니다. 사용 가능한 이벤트: ${VALID_EVENT_TYPES.join(', ')}`);
+  }
+
+  return eventType;
+}
+
+// 명령어 등록
 async function registerCommands() {
   const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_BOT_TOKEN);
   try {
     console.info('[Command Registration] 시작...');
     await rest.put(
-      Routes.applicationGuildCommands(
-        process.env.DISCORD_CLIENT_ID,
-        process.env.DISCORD_GUILD_ID
-      ),
+      Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID),
       { body: commands.map(cmd => cmd.toJSON()) }
     );
     console.info('[Command Registration] 완료');
@@ -23,17 +56,7 @@ async function registerCommands() {
   }
 }
 
-// 공통 error handler
-async function handleError(interaction, context, error) {
-  const errorMessage = error.response?.data || error.message;
-  console.error(`[${context}] 오류:`, errorMessage);
-
-  await interaction.reply({
-    content: `오류가 발생했습니다: ${errorMessage}`,
-    flags: MessageFlags.Ephemeral
-  });
-}
-
+// 봇 시작
 async function startBot() {
   try {
     await registerCommands();
@@ -49,92 +72,125 @@ async function startBot() {
     if (!interaction.isCommand()) return;
 
     const { commandName, options, channel, channelId } = interaction;
-    console.info(`[Command] ${commandName} 요청: 채널 ${channel.name} (${channelId})`);
+    const rawEventType = options.getString('event');
+    const target = options.getString('target');
+    const streamerId = target || null;
 
-    // help
-    if (commandName === 'help') {
-      try {
-        await interaction.reply({
-          content: '사용 가능한 명령어:\n' +
-            '/help - 명령어 도움말\n' +
-            '/hot - 전체 방송자 급상승 알림 구독\n' +
-            '/hot <방송자 채널ID> - 특정 방송자 급상승 알림 구독\n' +
-            '/unsubscribe - 전체 구독 해제\n' +
-            '/unsubscribe HOT - HOT 이벤트 전체 구독 해제\n' +
-            '/unsubscribe HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 해제\n',
-          flags: MessageFlags.Ephemeral
-        });
-      } catch (error) {
-        await handleError(interaction, 'Help Command', error);
-      }
+    console.info(`[Command] ${commandName} 요청: 채널 ${channel.name} (${channelId}), eventType: ${rawEventType}, target: ${target}`);
+
+    // eventType 파싱
+    let eventType;
+    try {
+      const isEventRequired = commandName === 'subscribe';
+      eventType = parseEventType(rawEventType, isEventRequired);
+    } catch (error) {
+      return await interaction.reply({
+        content: error.message,
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
-    // hot
-    if (commandName === 'hot') {
-      const target = options.getString('target'); // optional
-      const streamerId = target?.toLowerCase() === 'all' || !target ? null : target;
+    try {
+      // help
+      if (commandName === 'help') {
+        await interaction.reply({
+          content: [
+            ' 사용 가능한 명령어:',
+            '/help - 명령어 도움말',
+            '/subscribe HOT - 전체 방송자 실시간 급상승 감지 구독',
+            '/subscribe HOT <방송자 채널ID> - 특정 방송자 구독',
+            '/unsubscribe - 전체 구독 해제',
+            '/unsubscribe HOT - HOT 이벤트 전체 구독 해제',
+            '/unsubscribe HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 해제',
+            '/subscriptions - 전체 구독 조회',
+            '/subscriptions HOT - HOT 이벤트 구독 조회',
+            '/subscriptions HOT <방송자 채널ID> - HOT 이벤트 특정 방송자 구독 조회'
+          ].join('\n'),
+          flags: MessageFlags.Ephemeral
+        });
+      }
 
-      try {
-        await axios.post(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
+      // subscribe
+      else if (commandName === 'subscribe') {
+        await axios.post(`${process.env.BACKEND_BASE_URL}/api/subscriptions`, {
           discordGuildId: interaction.guildId,
           discordChannelId: interaction.channelId,
           streamerId,
-          eventType: 'HOT',
-          keyword: null
+          eventType,
+          keyword: null,
         });
 
         const message = streamerId
-          ? `방송자 채널 **${streamerId}** 실시간 급상승 알림 구독이 완료되었습니다.`
-          : '전체 방송자 실시간 급상승 알림 구독이 완료되었습니다.';
+          ? `방송자 **${streamerId}** 의 ${eventType} 알림 구독이 완료되었습니다.`
+          : `전체 방송자의 ${eventType} 알림 구독이 완료되었습니다.`;
 
-        await interaction.reply({
-          content: message,
-          flags: MessageFlags.Ephemeral
-        });
-      } catch (error) {
-        const status = error.response?.status;
-        if (status === 409) {
-          await interaction.reply({
-            content: '이미 구독 중인 대상입니다!',
-            flags: MessageFlags.Ephemeral
-          });
-        } else {
-          await handleError(interaction, 'Hot Command', error);
-        }
+        await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
       }
-    }
 
-    // unsubscribe
-    if (commandName === 'unsubscribe') {
-      const event = options.getString('event'); // optional
-      const target = options.getString('target'); // optional
-      const streamerId = target?.toLowerCase() === 'all' || !target ? null : target;
-
-      try {
-        await axios.delete(process.env.BACKEND_BASE_URL + '/api/subscriptions', {
+      // unsubscribe
+      else if (commandName === 'unsubscribe') {
+        await axios.delete(`${process.env.BACKEND_BASE_URL}/api/subscriptions`, {
           data: {
             discordGuildId: interaction.guildId,
             discordChannelId: interaction.channelId,
             streamerId,
-            eventType: event,
-            keyword: null
+            eventType,
+            keyword: null,
           }
         });
 
-        let message = '전체 구독이 해제되었습니다.';
-        if (event && streamerId) {
-          message = `방송자 **${streamerId}** 의 ${event} 알림 구독이 해제되었습니다.`;
-        } else if (event) {
-          message = `${event} 이벤트 전체 구독이 해제되었습니다.`;
+        let message;
+        if (!eventType && !streamerId) {
+          message = `전체 구독이 해제되었습니다.`;
+        } else if (eventType && !streamerId) {
+          message = `${eventType} 이벤트 전체 구독이 해제되었습니다.`;
+        } else {
+          message = `방송자 **${streamerId}** 의 ${eventType} 알림 구독이 해제되었습니다.`;
         }
 
+        await interaction.reply({ content: message, flags: MessageFlags.Ephemeral });
+      }
+
+      // subscriptions
+      else if (commandName === 'subscriptions') {
+        const response = await axios.get(`${process.env.BACKEND_BASE_URL}/api/subscriptions`, {
+          params: {
+            discordChannelId: interaction.channelId,
+            eventType,
+            streamerId,
+          }
+        });
+
+        const subscriptions = response.data;
+
+        if (!subscriptions.length) {
+          return await interaction.reply({
+            content: '현재 구독 중인 목록이 없습니다.',
+            flags: MessageFlags.Ephemeral,
+          });
+        }
+
+        const list = subscriptions.map(sub => {
+          const event = sub.eventType || 'Unknown';
+          const streamer = sub.streamerId ? `방송자 채널ID: ${sub.streamerId}` : '전체 방송자';
+          return `- ${event} / ${streamer}`;
+        }).join('\n');
+
         await interaction.reply({
-          content: message,
+          content: `📋 현재 구독 목록:\n${list}`,
+          flags: MessageFlags.Ephemeral,
+        });
+      }
+
+    } catch (error) {
+      if (commandName === 'subscribe' && error.response?.status === 409) {
+        return await interaction.reply({
+          content: '이미 구독 중인 대상입니다!',
           flags: MessageFlags.Ephemeral
         });
-      } catch (error) {
-        await handleError(interaction, 'Unsubscribe Command', error);
       }
+
+      await handleError(interaction, `${commandName} Command`, error);
     }
   });
 

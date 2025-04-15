@@ -28,11 +28,10 @@ public class SubscriptionService {
     private final StreamerRepository streamerRepository;
     private final DiscordChannelRepository discordChannelRepository;
 
+    // 구독 생성
     public void createSubscription(SubscriptionRequestDTO dto) {
-        if (dto.getEventType() == null) {
-            throw new IllegalArgumentException("eventType 은 필수 값입니다.");
-        }
-
+        log.info("dto:{}", dto.toString());
+        // 디스코드 채널 없으면 저장
         DiscordChannel discordChannel = discordChannelRepository.findByDiscordChannelId(dto.getDiscordChannelId())
                 .orElseGet(() -> discordChannelRepository.save(
                         DiscordChannel.builder()
@@ -47,12 +46,12 @@ public class SubscriptionService {
                     .orElseThrow(() -> new IllegalArgumentException("방송자를 찾을 수 없습니다."));
         }
 
-        boolean exists = streamer == null
-                ? subscriptionRepository.existsGlobalSubscription(dto.getDiscordChannelId(), dto.getEventType())
-                : subscriptionRepository.existsStreamerSubscription(dto.getDiscordChannelId(), streamer.getChannelId(), dto.getEventType());
+        // 중복 검사
+        boolean exists = (streamer == null) ?
+                subscriptionRepository.existsActiveGlobalSubscription(dto.getDiscordChannelId(), dto.getEventType()) :
+                subscriptionRepository.existsActiveStreamerSubscription(dto.getDiscordChannelId(), streamer.getChannelId(), dto.getEventType());
 
         if (exists) {
-            log.info("이미 구독 중입니다. discordChannelId={}, streamerId={}", dto.getDiscordChannelId(), dto.getStreamerId());
             throw new IllegalStateException("이미 구독 중인 대상입니다.");
         }
 
@@ -67,35 +66,47 @@ public class SubscriptionService {
         subscriptionRepository.save(subscription);
     }
 
+    // (내부) 방송자 기준 구독자 목록
     @Transactional(readOnly = true)
     public List<SubscriptionResponseDTO> getSubscriptions(String streamerId, EventType eventType) {
-        log.info("streamerId: {}, eventType: {}", streamerId, eventType);
-
         List<Subscription> subscriptions = new ArrayList<>();
-        subscriptions.addAll(subscriptionRepository.findStreamerSubscriptionsByEventType(streamerId, eventType));
-        subscriptions.addAll(subscriptionRepository.findGlobalSubscriptionsByEventType(eventType));
+        subscriptions.addAll(subscriptionRepository.findByActiveStreamerAndEvent(streamerId, eventType));
+        subscriptions.addAll(subscriptionRepository.findByActiveGlobalAndEvent(eventType));
 
         return subscriptions.stream()
-                .map(sub -> SubscriptionResponseDTO.builder()
-                        .discordGuildId(sub.getDiscordChannel().getDiscordGuildId())
-                        .discordChannelId(sub.getDiscordChannel().getDiscordChannelId())
-                        .build())
+                .map(this::toResponseDTO)
                 .collect(Collectors.toList());
     }
 
+    // (디스코드 봇용) 사용자 구독 목록
+    @Transactional(readOnly = true)
+    public List<SubscriptionResponseDTO> getMySubscriptions(String discordChannelId, String streamerId, EventType eventType) {
+        List<Subscription> subscriptions = new ArrayList<>();
+
+        if (streamerId != null && eventType != null) {
+            subscriptions.addAll(subscriptionRepository.findByActiveChannelAndStreamerAndEvent(discordChannelId, streamerId, eventType));
+        } else if (eventType != null) {
+            subscriptions.addAll(subscriptionRepository.findByActiveChannelAndEvent(discordChannelId, eventType));
+        } else {
+            subscriptions.addAll(subscriptionRepository.findByActiveChannel(discordChannelId));
+        }
+
+        return subscriptions.stream()
+                .map(this::toResponseDTO)
+                .collect(Collectors.toList());
+    }
+
+    // 구독 해제
     public void deactivateSubscription(SubscriptionRequestDTO dto) {
         List<Subscription> subscriptions;
 
         if (dto.getEventType() == null) {
-            // ✅ 전체 구독 해제
-            subscriptions = subscriptionRepository.findActiveSubscriptionsByChannelId(dto.getDiscordChannelId());
+            subscriptions = subscriptionRepository.findActiveByChannel(dto.getDiscordChannelId());
         } else if (dto.getStreamerId() == null) {
-            // ✅ 이벤트 전체 구독 해제
-            subscriptions = subscriptionRepository.findActiveSubscriptionsByChannelIdAndEventType(
+            subscriptions = subscriptionRepository.findByActiveChannelAndGlobalAndEvent(
                     dto.getDiscordChannelId(), dto.getEventType());
         } else {
-            // ✅ 이벤트 + 특정 스트리머 구독 해제
-            subscriptions = subscriptionRepository.findActiveSubscriptionsByChannelIdAndStreamerIdAndEventType(
+            subscriptions = subscriptionRepository.findByActiveChannelAndStreamerAndEventForDeactivate(
                     dto.getDiscordChannelId(), dto.getStreamerId(), dto.getEventType());
         }
 
@@ -106,4 +117,13 @@ public class SubscriptionService {
         subscriptions.forEach(Subscription::deactivate);
     }
 
+    // 공통 DTO 변환
+    private SubscriptionResponseDTO toResponseDTO(Subscription subscription) {
+        return SubscriptionResponseDTO.builder()
+                .discordGuildId(subscription.getDiscordChannel().getDiscordGuildId())
+                .discordChannelId(subscription.getDiscordChannel().getDiscordChannelId())
+                .eventType(subscription.getEventType())
+                .streamerId(subscription.getStreamer() != null ? subscription.getStreamer().getChannelId() : null)
+                .build();
+    }
 }
