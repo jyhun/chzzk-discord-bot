@@ -40,7 +40,7 @@ public class ChatService {
 
     public void collectChatsForStreamEvent(StreamEvent streamEvent) {
         try {
-            String channelId = streamEvent.getMetrics().getSession().getStreamer().getChannelId();
+            String channelId = streamEvent.getStreamMetrics().getStreamSession().getStreamer().getChannelId();
             Long id = streamEvent.getId();
 
             String url = processorUrl + "/crawler";
@@ -64,7 +64,7 @@ public class ChatService {
         StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
                 .orElseThrow(() -> new IllegalArgumentException("하이라이트를 찾을 수 없습니다."));
 
-        StreamMetrics metrics = streamEvent.getMetrics();
+        StreamMetrics metrics = streamEvent.getStreamMetrics();
         String category = metrics.getCategory();
         String title = metrics.getTitle();
         List<String> messages = chatMessagesRequestDTO.getMessages();
@@ -120,6 +120,8 @@ public class ChatService {
             if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
                 String summary = response.getBody().getChoices().get(0).getMessage().getContent();
                 streamEvent.updateSummary(summary);
+                streamEvent.updateChatCount(chatMessagesRequestDTO.getMessages().size());
+                streamEventRepository.save(streamEvent);
             } else {
                 throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
             }

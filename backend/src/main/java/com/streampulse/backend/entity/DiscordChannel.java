@@ -1,16 +1,15 @@
 package com.streampulse.backend.entity;
 
+import com.streampulse.backend.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class DiscordChannel {
+public class DiscordChannel extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,12 +18,11 @@ public class DiscordChannel {
     @Column(length = 100)
     private String discordGuildId;
 
-    @Column(length = 100, unique = true)
+    @Column(nullable = false, length = 100, unique = true)
     private String discordChannelId;
 
+    @Column(nullable = false)
     private boolean active;
-
-    private LocalDateTime createdAt;
 
     public void activate() {
         this.active = true;

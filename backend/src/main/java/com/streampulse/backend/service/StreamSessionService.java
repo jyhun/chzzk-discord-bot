@@ -29,6 +29,7 @@ public class StreamSessionService {
             StreamSession session = StreamSession.builder()
                     .streamer(streamer)
                     .title(dto.getLiveTitle())
+                    .category(dto.getLiveCategoryValue())
                     .startedAt(LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                     .build();
             return streamSessionRepository.save(session);
@@ -43,7 +44,7 @@ public class StreamSessionService {
                 .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));
         streamSession.updateEndedAt();
 
-        List<StreamMetrics> streamMetricsList = streamMetricsRepository.findBySessionId(streamSession.getId());
+        List<StreamMetrics> streamMetricsList = streamMetricsRepository.findByStreamSessionId(streamSession.getId());
 
         int sessionAvgViewer = (int) streamMetricsList.stream()
                 .mapToInt(StreamMetrics::getViewerCount)
@@ -51,6 +52,9 @@ public class StreamSessionService {
                 .orElse(0.0);
 
         streamSession.updateAverageViewerCount(sessionAvgViewer);
+
+        StreamMetrics streamMetrics = streamMetricsList.get(streamMetricsList.size() - 1);
+        streamSession.addTags(streamMetrics.getTags());
 
         int sessionPeekViewer = streamMetricsList.stream()
                 .mapToInt(StreamMetrics::getViewerCount)

@@ -82,22 +82,22 @@ public class NotificationService {
         ZoneId seoulZoneId = ZoneId.of("Asia/Seoul");
 
         // 데이터 추출
-        StreamMetrics metrics = streamEvent.getMetrics();
-        String channelId = metrics.getSession().getStreamer().getChannelId();
+        StreamMetrics metrics = streamEvent.getStreamMetrics();
+        String channelId = metrics.getStreamSession().getStreamer().getChannelId();
         String streamerUrl = "https://chzzk.naver.com/live/" + channelId;
-        String nickname = metrics.getSession().getStreamer().getNickname();
+        String nickname = metrics.getStreamSession().getStreamer().getNickname();
         String title = metrics.getTitle();
         String category = metrics.getCategory();
         int viewerCount = metrics.getViewerCount();
-        int averageViewerCount = metrics.getSession().getStreamer().getAverageViewerCount();
+        int averageViewerCount = metrics.getStreamSession().getStreamer().getAverageViewerCount();
         String summary = streamEvent.getSummary();
 
         // 감지 시각 (한국 시간)
-        ZonedDateTime detectedAtSeoul = streamEvent.getDetectedAt().atZone(seoulZoneId);
+        ZonedDateTime detectedAtSeoul = streamEvent.getCreatedAt().atZone(seoulZoneId);
         String formattedDate = detectedAtSeoul.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm"));
 
         // 방송 시작 시각 (한국 시간)
-        ZonedDateTime startedAtSeoul = metrics.getSession().getStartedAt().atZone(seoulZoneId);
+        ZonedDateTime startedAtSeoul = metrics.getStreamSession().getStartedAt().atZone(seoulZoneId);
 
         // 평균 대비 증가율 계산 (0 division 방지)
         float viewerIncreaseRate = 0;

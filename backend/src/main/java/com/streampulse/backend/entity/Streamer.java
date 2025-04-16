@@ -1,33 +1,31 @@
 package com.streampulse.backend.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import com.streampulse.backend.common.BaseTimeEntity;
+import jakarta.persistence.*;
 import lombok.*;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class Streamer {
+public class Streamer extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
     private String channelId;
 
+    @Column(nullable = false)
     private String nickname;
 
+    @Column(nullable = false)
     private boolean live;
 
+    @Column(nullable = false)
     private int averageViewerCount;
-
-    private LocalDateTime updatedAt;
 
     public void updateLive(boolean live) {
         this.live = live;

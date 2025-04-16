@@ -8,8 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -20,15 +18,15 @@ public class StreamMetricsService {
 
     public void saveMetrics(StreamSession session, LiveResponseDTO dto, Integer averageViewerCount) {
         StreamMetrics metrics = StreamMetrics.builder()
-                .session(session)
-                .collectedAt(LocalDateTime.now())
+                .streamSession(session)
                 .viewerCount(dto.getConcurrentUserCount())
                 .category(dto.getLiveCategoryValue())
                 .title(dto.getLiveTitle())
                 .build();
+        metrics.addTags(dto.getTags());
         metrics = streamMetricsRepository.save(metrics);
-        if(metrics.getViewerCount() > averageViewerCount * 1.5) {
-            streamEventService.saveStreamEvent(metrics);
+        if(metrics.getViewerCount() >= 1000 && metrics.getViewerCount() > averageViewerCount * 1.5) {
+            streamEventService.saveStreamEvent(metrics, averageViewerCount);
         }
     }
 

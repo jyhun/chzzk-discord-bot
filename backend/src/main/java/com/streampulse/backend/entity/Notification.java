@@ -1,5 +1,6 @@
 package com.streampulse.backend.entity;
 
+import com.streampulse.backend.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -10,26 +11,28 @@ import java.time.LocalDateTime;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Builder
-public class Notification {
+public class Notification extends BaseTimeEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "stream_event_id", nullable = false)
     private StreamEvent streamEvent;
 
-    @Column(length = 100)
+    @Column(nullable = false, length = 100)
     private String receiverId;
-
-    private LocalDateTime sentAt;
 
     @Column(columnDefinition = "TEXT")
     private String message;
 
+    @Column(nullable = false)
     private boolean success;
 
     @Column(length = 500)
     private String errorMessage;
+
+    private LocalDateTime sentAt;
 
 }
