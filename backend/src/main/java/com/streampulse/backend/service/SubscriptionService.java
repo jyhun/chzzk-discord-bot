@@ -57,6 +57,26 @@ public class SubscriptionService {
             throw new IllegalArgumentException("CHANGE 이벤트는 키워드가 필수입니다.");
         }
 
+        if (dto.getStreamerId() != null) {
+            // 전체 방송자 구독이 이미 존재하는 경우 → 개별 방송자 구독 불가
+            boolean hasGlobalSubscription = subscriptionRepository
+                    .existsGlobalSubscription(
+                            dto.getDiscordChannelId(), dto.getEventType());
+            if (hasGlobalSubscription) {
+                throw new IllegalStateException("해당 채널은 이미 전체 방송자 구독 중입니다. 개별 방송자 구독은 불가능합니다.");
+            }
+        }
+
+        if (dto.getStreamerId() == null) {
+            // 개별 방송자 구독이 이미 존재하는 경우 → 전체 방송자 구독 불가
+            boolean hasPerStreamerSubscription = subscriptionRepository
+                    .existsPerStreamerSubscription(
+                            dto.getDiscordChannelId(), dto.getEventType());
+            if (hasPerStreamerSubscription) {
+                throw new IllegalStateException("해당 채널은 이미 개별 방송자 구독 중입니다. 전체 방송자 구독은 불가능합니다.");
+            }
+        }
+
         // 4. 기존 구독 존재 여부 확인
         Subscription subscription = subscriptionRepository.findActiveByChannelAndStreamerAndEventType(
                 discordChannel.getDiscordChannelId(),
@@ -120,7 +140,8 @@ public class SubscriptionService {
 
     // (디스코드 봇용) 사용자 구독 목록
     @Transactional(readOnly = true)
-    public List<SubscriptionResponseDTO> getMySubscriptions(String discordChannelId, String streamerId, EventType eventType) {
+    public List<SubscriptionResponseDTO> getMySubscriptions(String discordChannelId, String streamerId, EventType
+            eventType) {
         List<Subscription> subscriptions = new ArrayList<>();
 
         if (streamerId != null && eventType != null) {

@@ -120,5 +120,31 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             @Param("eventType") EventType eventType
     );
 
+    @Query("""
+                SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+                FROM Subscription s
+                WHERE s.discordChannel.discordChannelId = :discordChannelId
+                  AND s.streamer IS NULL
+                  AND s.eventType = :eventType
+                  AND s.active = true
+            """)
+    boolean existsGlobalSubscription(
+            @Param("discordChannelId") String discordChannelId,
+            @Param("eventType") EventType eventType
+    );
+
+    @Query("""
+                SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END
+                FROM Subscription s
+                WHERE s.discordChannel.discordChannelId = :discordChannelId
+                  AND s.streamer IS NOT NULL
+                  AND s.eventType = :eventType
+                  AND s.active = true
+            """)
+    boolean existsPerStreamerSubscription(
+            @Param("discordChannelId") String discordChannelId,
+            @Param("eventType") EventType eventType
+    );
+
 
 }
