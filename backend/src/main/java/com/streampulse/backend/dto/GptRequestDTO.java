@@ -9,6 +9,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString(exclude = "messages")
 public class GptRequestDTO {
     private String model;
     private List<GptMessageDTO> messages;

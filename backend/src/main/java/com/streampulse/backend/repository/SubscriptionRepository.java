@@ -50,27 +50,6 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "AND s.active = true")
     List<Subscription> findByActiveGlobalAndEvent(@Param("eventType") EventType eventType);
 
-    // 📌 구독 존재 여부 체크: Global
-    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END " +
-            "FROM Subscription s " +
-            "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
-            "AND s.streamer IS NULL " +
-            "AND s.eventType = :eventType " +
-            "AND s.active = true")
-    boolean existsActiveGlobalSubscription(@Param("discordChannelId") String discordChannelId,
-                                           @Param("eventType") EventType eventType);
-
-    // 📌 구독 존재 여부 체크: 특정 방송자
-    @Query("SELECT CASE WHEN COUNT(s) > 0 THEN true ELSE false END " +
-            "FROM Subscription s " +
-            "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
-            "AND s.streamer.channelId = :streamerChannelId " +
-            "AND s.eventType = :eventType " +
-            "AND s.active = true")
-    boolean existsActiveStreamerSubscription(@Param("discordChannelId") String discordChannelId,
-                                             @Param("streamerChannelId") String streamerChannelId,
-                                             @Param("eventType") EventType eventType);
-
     // 📌 구독 해제용 (Global)
     @Query("SELECT s FROM Subscription s " +
             "WHERE s.discordChannel.discordChannelId = :discordChannelId " +

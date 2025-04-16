@@ -6,7 +6,6 @@ import com.streampulse.backend.entity.Notification;
 import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.enums.EventType;
-import com.streampulse.backend.infra.DiscordNotifier;
 import com.streampulse.backend.repository.NotificationRepository;
 import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +30,6 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final StreamEventRepository streamEventRepository;
-    private final DiscordNotifier discordNotifier;
     private final RestTemplate restTemplate;
 
     @Value("${processor.url}")

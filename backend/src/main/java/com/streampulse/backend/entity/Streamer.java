@@ -1,6 +1,5 @@
 package com.streampulse.backend.entity;
 
-import com.streampulse.backend.dto.StreamerRequestDTO;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -32,15 +31,6 @@ public class Streamer {
 
     public void updateLive(boolean live) {
         this.live = live;
-    }
-
-    public void update(StreamerRequestDTO streamerRequestDTO) {
-        if(streamerRequestDTO.getChannelId() != null) {
-            this.channelId = streamerRequestDTO.getChannelId();
-        }
-        if(streamerRequestDTO.getNickname() != null) {
-            this.nickname = streamerRequestDTO.getNickname();
-        }
     }
 
     public void updateAverageViewerCount(int averageViewerCount) {

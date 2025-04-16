@@ -7,6 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString
 public class NotificationRequestDTO {
     private Long streamEventId;
     private String receiverId;

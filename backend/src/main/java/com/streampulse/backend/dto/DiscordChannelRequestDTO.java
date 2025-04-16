@@ -7,6 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@ToString
 public class DiscordChannelRequestDTO {
     private String discordGuildId;
     private String discordChannelId;

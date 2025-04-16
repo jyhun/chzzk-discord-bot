@@ -36,10 +36,6 @@ public class StreamEvent {
 
     private float viewerIncreaseRate;
 
-    public void updateNotified(boolean notified) {
-        this.notified = notified;
-    }
-
     public void updateSummary(String summary) {
         this.summary = summary;
     }

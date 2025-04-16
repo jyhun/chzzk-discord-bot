@@ -1,7 +1,6 @@
 package com.streampulse.backend.service;
 
 import com.streampulse.backend.dto.LiveResponseDTO;
-import com.streampulse.backend.dto.StreamMetricsResponseDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.repository.StreamMetricsRepository;
@@ -10,7 +9,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @Transactional
@@ -32,20 +30,6 @@ public class StreamMetricsService {
         if(metrics.getViewerCount() > averageViewerCount * 1.5) {
             streamEventService.saveStreamEvent(metrics);
         }
-    }
-
-    public List<StreamMetricsResponseDTO> getStreamMetrics(Long sessionId) {
-        List<StreamMetrics> streamMetricsList = streamMetricsRepository.findBySessionId(sessionId);
-
-        return streamMetricsList.stream()
-                .map(m -> StreamMetricsResponseDTO.builder()
-                        .id(m.getId())
-                        .sessionId(m.getSession().getId())
-                        .collectedAt(m.getCollectedAt())
-                        .chatCount(m.getChatCount())
-                        .viewerCount(m.getViewerCount())
-                        .build())
-                .toList();
     }
 
 }

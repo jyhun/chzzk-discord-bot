@@ -3,16 +3,14 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.dto.ChatMessagesRequestDTO;
 import com.streampulse.backend.dto.GptMessageDTO;
 import com.streampulse.backend.dto.GptRequestDTO;
+import com.streampulse.backend.dto.GptResponseDTO;
 import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -111,23 +109,23 @@ public class ChatService {
         httpHeaders.setBearerAuth(openAiApiKey);
         HttpEntity<GptRequestDTO> httpEntity = new HttpEntity<>(gptRequestDTO, httpHeaders);
 
-//        try {
-//            ResponseEntity<GptResponseDTO> response = restTemplate.exchange(
-//                    openAiApiUrl,
-//                    HttpMethod.POST,
-//                    httpEntity,
-//                    GptResponseDTO.class
-//            );
-//
-//            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
-//                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
-//                streamEvent.updateSummary(summary);
-//            } else {
-//                throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
-//            }
-//        } catch (Exception e) {
-//            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
-//        }
+        try {
+            ResponseEntity<GptResponseDTO> response = restTemplate.exchange(
+                    openAiApiUrl,
+                    HttpMethod.POST,
+                    httpEntity,
+                    GptResponseDTO.class
+            );
+
+            if (response.getStatusCode() == HttpStatus.OK && response.getBody() != null) {
+                String summary = response.getBody().getChoices().get(0).getMessage().getContent();
+                streamEvent.updateSummary(summary);
+            } else {
+                throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
+        }
 
         notificationService.requestStreamHotNotification(streamEvent);
 

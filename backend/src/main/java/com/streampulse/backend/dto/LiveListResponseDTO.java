@@ -17,4 +17,9 @@ public class LiveListResponseDTO {
     public static class PageInfo {
         private String next;
     }
+
+    @Override
+    public String toString() {
+        return "LiveListResponseDTO{dataSize=" + (data != null ? data.size() : 0) + ", page=" + page + "}";
+    }
 }

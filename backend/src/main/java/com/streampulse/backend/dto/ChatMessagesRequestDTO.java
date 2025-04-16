@@ -11,4 +11,9 @@ import java.util.List;
 @Builder
 public class ChatMessagesRequestDTO {
     private List<String> messages;
+
+    @Override
+    public String toString() {
+        return "ChatMessagesRequestDTO{messagesSize=" + (messages != null ? messages.size() : 0) + "}";
+    }
 }
