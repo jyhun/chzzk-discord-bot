@@ -12,3 +12,16 @@ spring:
     properties:
       hibernate:
         format_sql: true
+
+openai:
+  api:
+    url: https://api.openai.com/v1/chat/completions
+    key: test-key
+
+processor:
+  url: http:localhost:3001
+
+chzzk:
+  api-base-url: https://api.chzzk.naver.com
+  client-id: test_client_id
+  client-secret: test_client_secret
