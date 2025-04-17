@@ -31,8 +31,9 @@ jobs:
             echo "${{ secrets.CREDENTIALS_JSON }}" > infra/prod/credentials.json
 
             echo "[STEP] Docker 컨테이너 정리 및 재배포"
+            docker compose -f infra/prod/docker-compose.yml build --no-cache --pull
             docker compose -f infra/prod/docker-compose.yml down
-            docker compose -f infra/prod/docker-compose.yml up -d --build --no-cache --pull
+            docker compose -f infra/prod/docker-compose.yml up -d
           EOF
 
       - name: Health Check
