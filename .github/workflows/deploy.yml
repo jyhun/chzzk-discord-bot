@@ -41,4 +41,4 @@ jobs:
       - name: Health Check
         run: |
           sleep 10
-          curl -f http://${{ secrets.SSH_HOST }}:8080/health || exit 1
+          curl -f http://${{ secrets.SSH_HOST }}:8080/actuator/health || exit 1
