@@ -12,6 +12,3 @@ spring:
     properties:
       hibernate:
         format_sql: true
-
-discord:
-  webhook-url: http://localhost:9999/test-webhook
