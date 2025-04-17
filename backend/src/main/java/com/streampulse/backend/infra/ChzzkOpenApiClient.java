@@ -90,7 +90,7 @@ public class ChzzkOpenApiClient {
             int lastViewerCount = data.get(data.size() - 1).getConcurrentUserCount();
             liveList.addAll(data);
             currentNode = new Node(nextCursor, currentNode);
-            if (lastViewerCount < 1000) {
+            if (lastViewerCount < 10) {
                 log.info("시청자 수 {}명 이하. 종료.", lastViewerCount);
                 break;
             }

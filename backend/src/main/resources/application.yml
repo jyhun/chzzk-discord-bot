@@ -16,9 +16,6 @@ logging:
   pattern:
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Seoul} [%level] [%thread] %logger{36} - %msg%n"
 
-discord:
-  webhook-url: ${DISCORD_WEBHOOK_URL}
-
 chzzk:
   api-base-url: ${CHZZK_API_BASE_URL}
   client-id: ${CHZZK_CLIENT_ID}

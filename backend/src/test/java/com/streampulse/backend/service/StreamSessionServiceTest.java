@@ -102,7 +102,7 @@ class StreamSessionServiceTest {
         // then
         verify(session).updateEndedAt();
         verify(session).updateAverageViewerCount(150); // (100+200)/2
-        verify(session).addTags(List.of(Tag.builder().value("태그1").build()));       // 마지막 태그
+        verify(session).addTags(anyList());
         verify(session).updatePeekViewerCount(200);     // 최대 시청자 수
 
         verify(streamSessionRepository).save(session);

@@ -4,6 +4,7 @@ import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.service.LiveSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -13,7 +14,7 @@ public class LiveSyncScheduler {
 
     private final LiveSyncService liveSyncService;
 
-//    @Scheduled(fixedRate = 60000)
+    @Scheduled(fixedRate = 60000)
     @LogExecution
     public void scheduleSyncLiveBroadcasts() {
         liveSyncService.syncLiveBroadcasts();

@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -45,6 +46,7 @@ public class NotificationService {
                 .success(notificationRequestDTO.isSuccess())
                 .message(notificationRequestDTO.getMessage())
                 .errorMessage(notificationRequestDTO.getErrorMessage())
+                .sentAt(LocalDateTime.now())
                 .build();
 
         notificationRepository.save(notification);

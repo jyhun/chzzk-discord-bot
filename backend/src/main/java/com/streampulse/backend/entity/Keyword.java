@@ -1,7 +1,6 @@
 package com.streampulse.backend.entity;
 
 import com.streampulse.backend.common.BaseTimeEntity;
-import com.streampulse.backend.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,8 +21,4 @@ public class Keyword extends BaseTimeEntity {
 
     @Column(nullable = false, length = 100)
     private String value;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private EventType eventType;
 }
