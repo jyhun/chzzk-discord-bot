@@ -40,6 +40,5 @@ jobs:
 
       - name: Health Check
         run: |
-          echo "Waiting for app to boot..."
           sleep 10
           curl -f http://${{ secrets.SSH_HOST }}:8080/health || exit 1
