@@ -20,8 +20,23 @@ jobs:
       - name: Deploy to GCP VM
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            echo "[STEP] 이동 중"
             cd /home/jyhun/StreamPulse
+
+            echo "[STEP] 최신 코드 pull"
             git pull origin main
+
+            echo "[STEP] 파일 생성 (infra/prod)"
+            echo "${{ secrets.ENV_PROD }}" > infra/prod/.env
+            echo "${{ secrets.CREDENTIALS_JSON }}" > infra/prod/credentials.json
+
+            echo "[STEP] Docker 컨테이너 정리 및 재배포"
             docker compose -f infra/prod/docker-compose.yml down
-            docker compose -f infra/prod/docker-compose.yml up -d --build
+            docker compose -f infra/prod/docker-compose.yml up -d --build --no-cache --pull
           EOF
+
+      - name: Health Check
+        run: |
+          echo "Waiting for app to boot..."
+          sleep 10
+          curl -f http://${{ secrets.SSH_HOST }}:8080/health || exit 1
