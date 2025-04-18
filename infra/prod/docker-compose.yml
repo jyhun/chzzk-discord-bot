@@ -1,8 +1,6 @@
 services:
   backend:
-    build:
-      context: ../../backend
-      dockerfile: Dockerfile.prod
+    image: j0hun/streampulse-backend:latest
     container_name: backend
     ports:
       - "8080:8080"
@@ -22,9 +20,7 @@ services:
       - processor
 
   processor:
-    build:
-      context: ../../processor
-      dockerfile: Dockerfile.prod
+    image: j0hun/streampulse-processor:latest
     container_name: processor
     ports:
       - "3001:3001"
