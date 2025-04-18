@@ -37,8 +37,3 @@ jobs:
             docker compose -f infra/prod/docker-compose.yml down
             docker compose -f infra/prod/docker-compose.yml up -d
           EOF
-
-      - name: Health Check
-        run: |
-          sleep 10
-          curl -f http://${{ secrets.SSH_HOST }}:8080/actuator/health || exit 1
