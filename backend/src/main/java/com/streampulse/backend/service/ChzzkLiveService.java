@@ -74,14 +74,15 @@ public class ChzzkLiveService {
             if (lastViewerCount < viewerThreshold) break;
         }
 
-        redisCursorStore.save(validCursors);
+        redisCursorStore.save("cursor_list:next",validCursors);
+        redisCursorStore.rename("cursor_list:next", "cursor_list:current");
     }
 
 
     public List<LiveResponseDTO> collectLiveBroadcastersFromRedis() {
         List<LiveResponseDTO> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
-        List<String> cursors = redisCursorStore.load();
+        List<String> cursors = redisCursorStore.load("cursor_list:current");
 
         for (String cursor : cursors) {
             ChzzkRootResponseDTO response = chzzkOpenApiClient.fetchPage(cursor);

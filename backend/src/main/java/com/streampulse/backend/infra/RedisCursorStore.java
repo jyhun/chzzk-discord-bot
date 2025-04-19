@@ -10,18 +10,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RedisCursorStore {
 
-    private static final String REDIS_KEY = "stream:valid-cursors";
     private final RedisTemplate<String, String> redisTemplate;
 
-    public void save(List<String> cursors) {
-        redisTemplate.delete(REDIS_KEY);
+    public void save(String key, List<String> cursors) {
+        redisTemplate.delete(key);
         if (cursors != null && !cursors.isEmpty()) {
-            redisTemplate.opsForList().rightPushAll(REDIS_KEY, cursors);
+            redisTemplate.opsForList().rightPushAll(key, cursors);
         }
     }
 
-    public List<String> load() {
-        return redisTemplate.opsForList().range(REDIS_KEY, 0, -1);
+    public List<String> load(String key) {
+        return redisTemplate.opsForList().range(key, 0, -1);
+    }
+
+    public void rename(String fromKey, String toKey) {
+        redisTemplate.rename(fromKey, toKey);
     }
 
 }
