@@ -34,7 +34,7 @@ public class ChzzkLiveService {
         }
     }
 
-    public List<String> fetchAndStoreValidCursors() {
+    public void fetchAndStoreValidCursors() {
         List<String> validCursors = new ArrayList<>();
         Set<String> failedCursors = new HashSet<>();
         Set<String> visitedCursors = new HashSet<>();
@@ -75,7 +75,6 @@ public class ChzzkLiveService {
         }
 
         redisCursorStore.save(validCursors);
-        return validCursors;
     }
 
 

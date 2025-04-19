@@ -31,11 +31,15 @@ public class LiveSyncService {
 
     public void syncLiveBroadcasts() {
         Set<String> liveStreamerIds = new HashSet<>();
+        Set<String> visitedBroadcasterIds = new HashSet<>();
 
         List<LiveResponseDTO> liveList = chzzkLiveService.collectLiveBroadcastersFromRedis();
 
         for (LiveResponseDTO dto : liveList) {
             String channelId = dto.getChannelId();
+
+            if(!visitedBroadcasterIds.add(channelId)) continue;
+
             liveStreamerIds.add(channelId);
 
             Streamer streamer = streamerService.getOrCreateStreamer(dto);
