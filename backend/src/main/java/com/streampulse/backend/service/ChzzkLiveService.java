@@ -5,15 +5,14 @@ import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.infra.ChzzkOpenApiClient;
 import com.streampulse.backend.infra.RedisCursorStore;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ChzzkLiveService {
 
     private final ChzzkOpenApiClient chzzkOpenApiClient;
@@ -35,11 +34,13 @@ public class ChzzkLiveService {
     }
 
     public void fetchAndStoreValidCursors() {
-        List<String> validCursors = new ArrayList<>();
+        Map<Integer, String> indexToCursor = new TreeMap<>();
         Set<String> failedCursors = new HashSet<>();
         Set<String> visitedCursors = new HashSet<>();
         Node currentNode = new Node(NO_CURSOR, null);
         visitedCursors.add(NO_CURSOR);
+
+        int pageIndex = 0;
 
         while (true) {
             String curCursor = currentNode.cursor;
@@ -47,6 +48,10 @@ public class ChzzkLiveService {
 
             if (response == null || response.getContent() == null) {
                 Node newNode = handleInvalidNext(currentNode, curCursor, visitedCursors, failedCursors);
+
+                int failedIndex = pageIndex;
+                indexToCursor.keySet().removeIf(i -> i >= failedIndex);
+
                 if (newNode == null) break;
                 currentNode = newNode;
                 continue;
@@ -66,25 +71,30 @@ public class ChzzkLiveService {
             int lastViewerCount = data.get(data.size() - 1).getConcurrentUserCount();
 
             if (topViewerCount >= viewerThreshold) {
-                validCursors.add(curCursor);
+                indexToCursor.put(pageIndex, curCursor);
             }
 
             currentNode = new Node(nextCursor, currentNode);
+            pageIndex++;
 
             if (lastViewerCount < viewerThreshold) break;
         }
 
-        redisCursorStore.save("cursor_list:next",validCursors);
-        redisCursorStore.rename("cursor_list:next", "cursor_list:current");
-    }
+        log.info("DeepScan 완료. 유효 커서 {}개", indexToCursor.size());
+        for (Map.Entry<Integer, String> entry : indexToCursor.entrySet()) {
+            log.info("pageIndex = {}, cursor = {}", entry.getKey(), entry.getValue());
+        }
 
+        redisCursorStore.saveZSet("cursor_zset:next", indexToCursor);
+        redisCursorStore.rename("cursor_zset:next", "cursor_zset:current");
+    }
 
     public List<LiveResponseDTO> collectLiveBroadcastersFromRedis() {
         List<LiveResponseDTO> result = new ArrayList<>();
         Set<String> visited = new HashSet<>();
-        List<String> cursors = redisCursorStore.load("cursor_list:current");
+        Map<Integer, String> indexedCursors = redisCursorStore.loadZSet("cursor_zset:current");
 
-        for (String cursor : cursors) {
+        for (String cursor : indexedCursors.values()) {
             ChzzkRootResponseDTO response = chzzkOpenApiClient.fetchPage(cursor);
             if (response == null || response.getContent() == null) continue;
 
@@ -94,7 +104,6 @@ public class ChzzkLiveService {
                 result.add(dto);
             }
         }
-
         return result;
     }
 

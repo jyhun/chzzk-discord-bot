@@ -2,9 +2,10 @@ package com.streampulse.backend.infra;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
@@ -12,15 +13,28 @@ public class RedisCursorStore {
 
     private final RedisTemplate<String, String> redisTemplate;
 
-    public void save(String key, List<String> cursors) {
+    public void saveZSet(String key, Map<Integer, String> indexToCursor) {
         redisTemplate.delete(key);
-        if (cursors != null && !cursors.isEmpty()) {
-            redisTemplate.opsForList().rightPushAll(key, cursors);
+        ZSetOperations<String, String> zSetOps = redisTemplate.opsForZSet();
+        for (Map.Entry<Integer, String> entry : indexToCursor.entrySet()) {
+            zSetOps.add(key, entry.getValue(), entry.getKey());
         }
     }
 
-    public List<String> load(String key) {
-        return redisTemplate.opsForList().range(key, 0, -1);
+    public Map<Integer, String> loadZSet(String key) {
+        Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().rangeWithScores(key, 0, -1);
+        if (tuples == null) return Collections.emptyMap();
+
+        Map<Integer, String> result = new LinkedHashMap<>();
+        for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+            String cursor = tuple.getValue();
+            Double score = tuple.getScore();
+
+            if (cursor == null || score == null) continue;
+
+            result.put(score.intValue(), cursor);
+        }
+        return result;
     }
 
     public void rename(String fromKey, String toKey) {
