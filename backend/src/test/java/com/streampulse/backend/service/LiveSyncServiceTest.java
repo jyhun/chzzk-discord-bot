@@ -1,5 +1,7 @@
 package com.streampulse.backend.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
@@ -11,10 +13,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 import java.util.List;
-import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
@@ -27,9 +29,14 @@ class LiveSyncServiceTest {
     @Mock private StreamMetricsService streamMetricsService;
     @Mock private NotificationService notificationService;
     @Mock private SubscriptionService subscriptionService;
+    @Mock private RedisTemplate<String, String> redisTemplate;
+    @Mock private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
     private LiveSyncService liveSyncService;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     private LiveResponseDTO sampleDto;
 
@@ -43,7 +50,7 @@ class LiveSyncServiceTest {
     }
 
     @Test
-    void 방송시작이면_상태업데이트하고_START알림보냄() {
+    void 방송시작이면_상태업데이트하고_START알림보냄() throws JsonProcessingException {
         // given
         Streamer streamer = mock(Streamer.class);
         when(streamer.isLive()).thenReturn(false);
@@ -56,6 +63,10 @@ class LiveSyncServiceTest {
 
         when(chzzkOpenApiClient.fetchLiveList()).thenReturn(List.of(sampleDto));
 
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("snapshot:1")).thenReturn(null);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"title\":\"재밌는 방송\"}");
+
         // when
         liveSyncService.syncLiveBroadcasts();
 
@@ -66,7 +77,7 @@ class LiveSyncServiceTest {
     }
 
     @Test
-    void 방송정보가_이전과_다르면_CHANGE알림보냄() throws ClassNotFoundException {
+    void 방송정보가_이전과_다르면_CHANGE알림보냄() throws Exception {
         // given
         Streamer streamer = mock(Streamer.class);
         when(streamer.isLive()).thenReturn(true);
@@ -79,22 +90,9 @@ class LiveSyncServiceTest {
 
         when(chzzkOpenApiClient.fetchLiveList()).thenReturn(List.of(sampleDto));
 
-        // 이전 상태와 다르게 만들어서 변경 감지 테스트
-        LiveResponseDTO prevDto = new LiveResponseDTO();
-        prevDto.setLiveTitle("이전 방송");
-        prevDto.setLiveCategoryValue("기타");
-        prevDto.setTags(List.of("태그1"));
-
-        // BroadcastSnapshot.from(prevDto)를 호출해서 이전 상태 생성
-        Object snapshot = ReflectionTestUtils.invokeMethod(
-                Class.forName("com.streampulse.backend.service.LiveSyncService$BroadcastSnapshot"),
-                "from",
-                prevDto
-        );
-
-        Map<Long, Object> cache = new java.util.concurrent.ConcurrentHashMap<>();
-        cache.put(99L, snapshot);
-        ReflectionTestUtils.setField(liveSyncService, "changeCache", cache);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        when(valueOperations.get("snapshot:99")).thenReturn("{\"title\":\"이전 방송\",\"category\":\"기타\",\"tags\":[\"태그1\"]}");
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"title\":\"재밌는 방송\",\"category\":\"게임\",\"tags\":[\"감동\",\"웃김\"]}");
 
         // when
         liveSyncService.syncLiveBroadcasts();
@@ -102,5 +100,4 @@ class LiveSyncServiceTest {
         // then
         verify(subscriptionService).detectChangeEvent(sampleDto);
     }
-
 }
