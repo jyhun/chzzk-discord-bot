@@ -6,7 +6,6 @@ import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
-import com.streampulse.backend.infra.ChzzkOpenApiClient;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,7 @@ import java.util.*;
 @RequiredArgsConstructor
 public class LiveSyncService {
 
-    private final ChzzkOpenApiClient chzzkOpenApiClient;
+    private final ChzzkLiveService chzzkLiveService;
     private final StreamerService streamerService;
     private final StreamSessionService streamSessionService;
     private final StreamMetricsService streamMetricsService;
@@ -33,7 +32,7 @@ public class LiveSyncService {
     public void syncLiveBroadcasts() {
         Set<String> liveStreamerIds = new HashSet<>();
 
-        List<LiveResponseDTO> liveList = chzzkOpenApiClient.fetchLiveList();
+        List<LiveResponseDTO> liveList = chzzkLiveService.collectLiveBroadcastersFromRedis();
 
         for (LiveResponseDTO dto : liveList) {
             String channelId = dto.getChannelId();
