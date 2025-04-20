@@ -38,7 +38,7 @@ public class LiveSyncService {
         for (LiveResponseDTO dto : liveList) {
             String channelId = dto.getChannelId();
 
-            if(!visitedBroadcasterIds.add(channelId)) continue;
+            if (!visitedBroadcasterIds.add(channelId)) continue;
 
             liveStreamerIds.add(channelId);
 
@@ -47,14 +47,18 @@ public class LiveSyncService {
 
             if (!streamer.isLive()) {
                 streamerService.updateLiveStatus(streamer, true);
-                notificationService.requestStreamStatusNotification(channelId, EventType.START);
+                if (subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
+                    notificationService.requestStreamStatusNotification(channelId, EventType.START);
+                }
             }
 
             streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
 
             // 변경 사항 있을 경우 알림
             if (hasChanged(session.getId(), dto)) {
-                subscriptionService.detectChangeEvent(dto);
+                if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId)) {
+                    subscriptionService.detectChangeEvent(dto);
+                }
             }
         }
 
@@ -67,7 +71,7 @@ public class LiveSyncService {
         String currJson = serialize(dto);
         String prevJson = redisTemplate.opsForValue().get(redisKey);
 
-        if(!currJson.equals(prevJson)) {
+        if (!currJson.equals(prevJson)) {
             redisTemplate.opsForValue().set(redisKey, currJson);
             return true;
         }

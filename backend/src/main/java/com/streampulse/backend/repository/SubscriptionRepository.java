@@ -125,5 +125,16 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             @Param("eventType") EventType eventType
     );
 
+    @Query("""
+    SELECT COUNT(s) > 0
+    FROM Subscription s
+    WHERE s.eventType = :eventType
+      AND s.active = true
+      AND (s.streamer.channelId = :channelId OR s.streamer IS NULL)
+    """)
+    boolean existsActiveByEventTypeAndChannelIdOrAll(
+            @Param("eventType") EventType eventType,
+            @Param("channelId") String channelId
+    );
 
 }

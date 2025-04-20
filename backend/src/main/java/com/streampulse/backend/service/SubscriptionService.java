@@ -241,4 +241,9 @@ public class SubscriptionService {
         return false;
     }
 
+    public boolean hasSubscribersFor(EventType eventType, String channelId) {
+        return subscriptionRepository.existsActiveByEventTypeAndChannelIdOrAll(eventType, channelId);
+    }
+
+
 }

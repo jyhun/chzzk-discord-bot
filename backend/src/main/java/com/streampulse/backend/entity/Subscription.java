@@ -24,7 +24,7 @@ public class Subscription extends BaseTimeEntity {
     private DiscordChannel discordChannel;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "streamer_id", nullable = false)
+    @JoinColumn(name = "streamer_id")
     private Streamer streamer;
 
     @Enumerated(EnumType.STRING)

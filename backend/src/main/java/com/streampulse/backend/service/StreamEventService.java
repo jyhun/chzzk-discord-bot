@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class StreamEventService {
 
     private final StreamEventRepository streamEventRepository;
+    private final SubscriptionService subscriptionService;
     private final ChatService chatService;
 
     public void saveStreamEvent(StreamMetrics metrics, Integer averageViewerCount) {
@@ -24,7 +25,12 @@ public class StreamEventService {
                 .viewerIncreaseRate((float) metrics.getViewerCount() / averageViewerCount)
                 .build();
 
+
         streamEventRepository.save(streamEvent);
+
+        if (!subscriptionService.hasSubscribersFor(EventType.HOT, metrics.getStreamSession().getStreamer().getChannelId())) {
+            return;
+        }
 
         chatService.collectChatsForStreamEvent(streamEvent);
     }

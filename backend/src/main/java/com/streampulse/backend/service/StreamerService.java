@@ -20,6 +20,7 @@ public class StreamerService {
     private final StreamerRepository streamerRepository;
     private final StreamSessionService streamSessionService;
     private final NotificationService notificationService;
+    private final SubscriptionService subscriptionService;
 
     public Streamer getOrCreateStreamer(LiveResponseDTO dto) {
         return streamerRepository.findByChannelId(dto.getChannelId()).orElseGet(
@@ -42,7 +43,9 @@ public class StreamerService {
         for (Streamer streamer : streamerList) {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
                 updateLiveStatus(streamer, false);
-                notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.END);
+                if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId())) {
+                    notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.END);
+                }
                 streamSessionService.handleStreamEnd(streamer);
             }
         }
