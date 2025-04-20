@@ -4,11 +4,9 @@ import com.streampulse.backend.dto.ChzzkRootResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 @Component
@@ -42,9 +40,11 @@ public class ChzzkOpenApiClient {
                     ChzzkRootResponseDTO.class
             );
             return resp.getBody();
-        } catch (Exception e) {
-            log.warn("치지직 라이브 목록 페이징 호출 실패");
-            return null;
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                log.error("치지직 API 호출이 너무 많습니다 (429 Too Many Requests): {}", e.getMessage());
+            }
         }
+        return null;
     }
 }

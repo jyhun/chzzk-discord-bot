@@ -1,5 +1,14 @@
-// src/index.js
 require('dotenv').config();
+const { exec } = require('child_process');
+
+exec('pkill -f headless_shell', (err) => {
+  if (err) {
+    console.log('[init] headless_shell 종료 실패 또는 없음');
+  } else {
+    console.log('[init] 기존 headless_shell 프로세스 정리 완료');
+  }
+});
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const { collectChatsForStreamEvent } = require('./crawler/crawler');

@@ -26,29 +26,32 @@ async function getJoinPayload(channelId) {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
-  const joinPayload = await new Promise((resolve) => {
-    page.once('websocket', ws => {
-      ws.once('framesent', frame => {
-        try {
-          const msg = JSON.parse(frame.payload);
-          if (msg.cmd === 100) {
-            resolve(msg);
+  try {
+    const joinPayload = await new Promise((resolve) => {
+      page.once('websocket', ws => {
+        ws.once('framesent', frame => {
+          try {
+            const msg = JSON.parse(frame.payload);
+            if (msg.cmd === 100) {
+              resolve(msg);
+            }
+          } catch (err) {
+            console.error(`joinPayload 파싱 오류: ${err.message}`);
           }
-        } catch (err) {
-          console.error(`joinPayload 파싱 오류: ${err.message}`);
-        }
+        });
+      });
+
+      page.goto(`https://chzzk.naver.com/live/${channelId}`, {
+        timeout: 60000,
+        waitUntil: 'domcontentloaded'
       });
     });
-    page.goto(`https://chzzk.naver.com/live/${channelId}`, {
-      timeout: 60000,
-      waitUntil: 'domcontentloaded'
-    });
-  });
 
-  await page.close();
-  await browser.close();
-
-  return joinPayload;
+    return joinPayload;
+  } finally {
+    await page.close().catch(() => {});
+    await browser.close().catch(() => {});
+  }
 }
 
 function collectChatsOverWebSocket(joinPayload, channelId) {

@@ -26,7 +26,7 @@ spring:
 
 logging:
   level:
-    root: info
+    root: warn
     org.hibernate.SQL: warn
     org.hibernate.type.descriptor.sql.BasicBinder: warn
     org.hibernate.orm.jdbc.bind: warn
