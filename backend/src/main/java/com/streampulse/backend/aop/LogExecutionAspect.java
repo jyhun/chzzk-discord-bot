@@ -30,8 +30,9 @@ public class LogExecutionAspect {
         String metricName = "method_execution_seconds";
         Timer.Sample sample = Timer.start(meterRegistry);
 
-        log.info("[{}] {} 메서드 시작. 인자: {}", className, methodName, Arrays.toString(args));
-
+        if (log.isInfoEnabled()) {
+            log.info("[{}] {} 메서드 시작. 인자: {}", className, methodName, Arrays.toString(args));
+        }
         try {
             Object result = joinPoint.proceed();
             sample.stop(Timer.builder(metricName)
