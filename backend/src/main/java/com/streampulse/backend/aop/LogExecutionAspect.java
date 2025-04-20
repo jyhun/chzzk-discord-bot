@@ -1,5 +1,8 @@
 package com.streampulse.backend.aop;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -12,7 +15,10 @@ import java.util.Arrays;
 @Aspect
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class LogExecutionAspect {
+
+    private final MeterRegistry meterRegistry;
 
     @Around("@annotation(com.streampulse.backend.aop.LogExecution) || execution(* com.streampulse.backend.service..*(..))")
     public Object logExecution(ProceedingJoinPoint joinPoint) throws Throwable {
@@ -21,13 +27,22 @@ public class LogExecutionAspect {
         String methodName = signature.getName();
         Object[] args = joinPoint.getArgs();
 
+        String metricName = "method_execution_seconds";
+        Timer.Sample sample = Timer.start(meterRegistry);
+
         log.info("[{}] {} 메서드 시작. 인자: {}", className, methodName, Arrays.toString(args));
-        long startTime = System.currentTimeMillis();
 
         try {
             Object result = joinPoint.proceed();
-            long endTime = System.currentTimeMillis();
-            log.info("[{}] {} 메서드 정상 종료 (실행 시간: {} ms). 반환값: {}", className, methodName, (endTime - startTime), result);
+            sample.stop(Timer.builder(metricName)
+                    .tag("class", className)
+                    .tag("method", methodName)
+                    .register(meterRegistry));
+
+            if (log.isInfoEnabled()) {
+                log.info("[{}] {} 메서드 정상 종료. 반환값: {}", className, methodName, result);
+            }
+
             return result;
         } catch (Throwable e) {
             log.error("[{}] {} 메서드 실행 중 예외 발생. 인자: {} 에러: {}", className, methodName, Arrays.toString(args), e.getMessage(), e);
