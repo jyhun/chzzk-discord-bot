@@ -90,7 +90,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
 
     @Query("SELECT s FROM Subscription s " +
             "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
-            "AND (:streamerChannelId IS NULL AND s.streamer IS NULL OR s.streamer.channelId = :streamerChannelId) " +
+            "AND ((:streamerChannelId IS NULL AND s.streamer IS NULL) OR s.streamer.channelId = :streamerChannelId) " +
             "AND s.eventType = :eventType " +
             "AND s.active = true")
     Optional<Subscription> findActiveByChannelAndStreamerAndEventType(
@@ -126,12 +126,13 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     );
 
     @Query("""
-    SELECT COUNT(s) > 0
-    FROM Subscription s
-    WHERE s.eventType = :eventType
-      AND s.active = true
-      AND (s.streamer.channelId = :channelId OR s.streamer IS NULL)
-    """)
+            SELECT COUNT(s) > 0
+            FROM Subscription s
+            LEFT JOIN s.streamer streamer
+            WHERE s.eventType = :eventType
+              AND s.active = true
+              AND (streamer.channelId = :channelId OR streamer IS NULL)
+            """)
     boolean existsActiveByEventTypeAndChannelIdOrAll(
             @Param("eventType") EventType eventType,
             @Param("channelId") String channelId
