@@ -20,7 +20,7 @@ public class ChzzkLiveService {
 
     private static final int RETRY_WAIT_MS = 10000;
     private static final String NO_CURSOR = "";
-    private static final int viewerThreshold = 1000;
+    private static final int viewerThreshold = 1;
 
 
     private static class Node {

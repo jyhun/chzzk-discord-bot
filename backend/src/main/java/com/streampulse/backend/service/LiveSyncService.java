@@ -47,7 +47,7 @@ public class LiveSyncService {
 
             if (!streamer.isLive()) {
                 streamerService.updateLiveStatus(streamer, true);
-                if (subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
+                if (subscriptionService.hasSubscribersFor(EventType.START, channelId) && streamer.getAverageViewerCount() >= 10) {
                     notificationService.requestStreamStatusNotification(channelId, EventType.START);
                 }
             }
@@ -56,7 +56,7 @@ public class LiveSyncService {
 
             // 변경 사항 있을 경우 알림
             if (hasChanged(session.getId(), dto)) {
-                if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId)) {
+                if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId) && streamer.getAverageViewerCount() >= 10) {
                     subscriptionService.detectChangeEvent(dto);
                 }
             }

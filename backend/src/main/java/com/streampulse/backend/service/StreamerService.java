@@ -43,7 +43,7 @@ public class StreamerService {
         for (Streamer streamer : streamerList) {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
                 updateLiveStatus(streamer, false);
-                if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId())) {
+                if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId()) && streamer.getAverageViewerCount() >= 10) {
                     notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.END);
                 }
                 streamSessionService.handleStreamEnd(streamer);
