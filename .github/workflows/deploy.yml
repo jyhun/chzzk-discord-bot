@@ -50,7 +50,8 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << EOF
             cd /home/jyhun/StreamPulse
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             sed -i 's|streampulse-backend:.*|streampulse-backend:${{ env.DATE_TAG }}|' infra/prod/docker-compose.yml
             sed -i 's|streampulse-processor:.*|streampulse-processor:${{ env.DATE_TAG }}|' infra/prod/docker-compose.yml
             docker compose -f infra/prod/docker-compose.yml pull
