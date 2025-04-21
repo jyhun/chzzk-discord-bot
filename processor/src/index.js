@@ -17,7 +17,7 @@ const { client } = require('./discord/bot');
 const createStreamHotRouter = require('./discord/stream-hot');
 const createStreamStartRouter = require('./discord/stream-start');
 const createStreamEndRouter = require('./discord/stream-end');
-const createStreamChangeRouter = require('./discord/stream-change');
+const createStreamTopicRouter = require('./discord/stream-topic');
 
 const app = express();
 
@@ -26,7 +26,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use('/api', createStreamHotRouter(client));
 app.use('/api', createStreamStartRouter(client));
 app.use('/api', createStreamEndRouter(client));
-app.use('/api', createStreamChangeRouter(client));
+app.use('/api', createStreamTopicRouter(client));
 
 // /crawler API: 채널 ID와 하이라이트 ID를 받아 크롤러를 실행합니다.
 app.post('/crawler', async (req, res) => {

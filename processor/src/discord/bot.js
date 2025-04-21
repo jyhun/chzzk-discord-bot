@@ -4,7 +4,7 @@ const commands = require('./commands');
 const axios = require('axios');
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-const VALID_EVENT_TYPES = ['HOT', 'START', 'END', 'CHANGE'];
+const VALID_EVENT_TYPES = ['HOT', 'START', 'END', 'TOPIC'];
 
 // 공통 에러 핸들러
 async function handleError(interaction, context, error) {
@@ -111,13 +111,6 @@ async function startBot() {
       });
     }
 
-    if (eventType === 'CHANGE' && (!keyword || keyword.trim() === '')) {
-      return await interaction.reply({
-        content: `CHANGE 이벤트는 키워드가 필수입니다. 예: \`/subscribe CHANGE <채널ID> <키워드>\` 또는 \`/subscribe CHANGE <키워드>\``,
-        flags: MessageFlags.Ephemeral,
-      });
-    }    
-
     try {
       // help
       if (commandName === 'help') {
@@ -132,24 +125,24 @@ async function startBot() {
             '- `/subscribe START <채널ID>` : 특정 방송자 방송 시작 구독',
             '- `/subscribe END` : 전체 방송자 방송 종료 감지 구독',
             '- `/subscribe END <채널ID>` : 특정 방송자 방송 종료 구독',
-            '- `/subscribe CHANGE <채널ID> <키워드>` : 특정 방송자 방송 제목, 태그, 카테고리 변경 시 키워드 포함 감지 구독',
-            '- `/subscribe CHANGE <키워드>` : 전체 방송자 방송 제목, 태그, 카테고리 변경 시 키워드 포함 감지 구독',
+            '- `/subscribe TOPIC <채널ID> <키워드>` : 특정 방송자 방송 제목, 태그, 카테고리에서 키워드 포함시 감지 구독',
+            '- `/subscribe TOPIC <키워드>` : 전체 방송자 방송 제목, 태그, 카테고리에서 키워드 포함시 감지 구독',
             '',
             '🚫 **구독 해제 명령어** (`/unsubscribe`)',
             '- `/unsubscribe` : 모든 구독 해제',
             '- `/unsubscribe HOT` : 전체 HOT 구독 해제',
             '- `/unsubscribe HOT <채널ID>` : 특정 방송자의 HOT 구독 해제',
-            '- `/unsubscribe START` / `END` / `CHANGE` 도 위와 동일한 방식으로 해제 가능',
+            '- `/unsubscribe START` / `END` / `TOPIC` 도 위와 동일한 방식으로 해제 가능',
             '',
             '📋 **구독 조회 명령어** (`/subscriptions`)',
             '- `/subscriptions` : 현재 채널의 전체 구독 목록 조회',
             '- `/subscriptions HOT` : HOT 구독 목록만 조회',
             '- `/subscriptions START <채널ID>` : 특정 방송자의 START 구독 여부 조회',
-            '- `/subscriptions CHANGE <채널ID>` : CHANGE 키워드 구독도 포함하여 확인 가능',
+            '- `/subscriptions TOPIC <채널ID>` : TOPIC 키워드 구독도 포함하여 확인 가능',
             '',
-            'ℹ️ 키워드는 `CHANGE` 이벤트에서만 사용됩니다. 키워드는 제목, 태그, 카테고리에 포함될 경우 감지됩니다.',
+            'ℹ️ 키워드는 `TOPIC` 이벤트에서만 사용됩니다. 키워드는 제목, 태그, 카테고리에 포함될 경우 감지됩니다.',
             '',
-            '예시) `/subscribe CHANGE streamer123 롤` → streamer123의 제목/카테고리/태그에 "롤"이 포함되면 알림'
+            '예시) `/subscribe TOPIC streamer123 롤` → streamer123의 제목/카테고리/태그에 "롤"이 포함되면 알림'
           ].join('\n'),
           flags: MessageFlags.Ephemeral
         });
@@ -157,20 +150,26 @@ async function startBot() {
 
       // subscribe
       else if (commandName === 'subscribe') {
+        if (eventType === 'TOPIC' && (!keyword || keyword.trim() === '')) {
+          return await interaction.reply({
+            content: `TOPIC 이벤트는 키워드가 필수입니다. 예: \`/subscribe TOPIC <채널ID> <키워드>\` 또는 \`/subscribe TOPIC <키워드>\``,
+            flags: MessageFlags.Ephemeral,
+          });
+        }
         const singleKeyword = keyword?.trim();
         await axios.post(`${process.env.BACKEND_BASE_URL}/api/subscriptions`, {
           discordGuildId: interaction.guildId,
           discordChannelId: interaction.channelId,
           streamerId,
           eventType,
-          keyword: eventType === 'CHANGE' ? singleKeyword : null,
+          keyword: eventType === 'TOPIC' ? singleKeyword : null,
         });
 
         let message = '';
-        if (eventType === 'CHANGE') {
+        if (eventType === 'TOPIC') {
           message = streamerId
-            ? `방송자 **${streamerId}** 의 CHANGE 키워드 \`${singleKeyword}\` 알림 구독이 완료되었습니다.`
-            : `전체 방송자의 CHANGE 키워드 \`${singleKeyword}\` 알림 구독이 완료되었습니다.`;
+            ? `방송자 **${streamerId}** 의 TOPIC 키워드 \`${singleKeyword}\` 알림 구독이 완료되었습니다.`
+            : `전체 방송자의 TOPIC 키워드 \`${singleKeyword}\` 알림 구독이 완료되었습니다.`;
         } else {
           message = streamerId
             ? `방송자 **${streamerId}** 의 ${eventType} 알림 구독이 완료되었습니다.`

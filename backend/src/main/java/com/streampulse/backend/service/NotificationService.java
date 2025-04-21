@@ -93,13 +93,13 @@ public class NotificationService {
     }
 
 
-    public void requestStreamChangeNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
-        String url = processorUrl + "/api/stream-change";
+    public void requestStreamTopicNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
+        String url = processorUrl + "/api/stream-topic";
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("streamerId", streamerChannelId);
         payload.put("discordChannelId", discordChannelId);
-        payload.put("eventType", EventType.CHANGE.name());
+        payload.put("eventType", EventType.TOPIC.name());
         payload.put("keywords", matchedKeywords);
         payload.put("title", dto.getLiveTitle());
         payload.put("category", dto.getLiveCategoryValue());

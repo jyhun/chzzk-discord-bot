@@ -55,8 +55,8 @@ public class LiveSyncService {
                         notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
                     }
 
-                    if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId)) {
-                        subscriptionService.detectChangeEvent(dto);
+                    if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
+                        subscriptionService.detectTopicEvent(dto);
                     }
                 }
             }
@@ -65,8 +65,8 @@ public class LiveSyncService {
 
             // 변경 사항 있을 경우 알림
             if (hasChanged(session.getId(), dto)) {
-                if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId) && streamer.getAverageViewerCount() >= 10) {
-                    subscriptionService.detectChangeEvent(dto);
+                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId) && streamer.getAverageViewerCount() >= 10) {
+                    subscriptionService.detectTopicEvent(dto);
                 }
             }
         }

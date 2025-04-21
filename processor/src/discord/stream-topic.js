@@ -1,12 +1,12 @@
 const express = require('express');
 
-function createChangeRouter(client) {
+function createTopicRouter(client) {
   const router = express.Router();
 
-  router.post('/stream-change', async (req, res) => {
+  router.post('/stream-topic', async (req, res) => {
     const { streamerId, discordChannelId, keywords, title, category, tags } = req.body;
 
-    console.info(`[CHANGE] 변경 감지 요청 수신: ${streamerId}, 채널: ${discordChannelId}`);
+    console.info(`[TOPIC] 변경 감지 요청 수신: ${streamerId}, 채널: ${discordChannelId}`);
 
     try {
       const keywordList = (keywords || []).map(k => `\`${k}\``).join(', ') || 'N/A';
@@ -24,10 +24,10 @@ function createChangeRouter(client) {
       const channel = await client.channels.fetch(discordChannelId);
       await channel.send(message);
 
-      console.info(`[CHANGE] 알림 전송 성공: ${discordChannelId}`);
+      console.info(`[TOPIC] 알림 전송 성공: ${discordChannelId}`);
       return res.json({ message: '알림 전송 완료' });
     } catch (error) {
-      console.error(`[CHANGE] 알림 전송 실패: ${discordChannelId}`, error.message);
+      console.error(`[TOPIC] 알림 전송 실패: ${discordChannelId}`, error.message);
       return res.status(500).json({ error: '알림 전송 실패' });
     }
   });
@@ -35,4 +35,4 @@ function createChangeRouter(client) {
   return router;
 }
 
-module.exports = createChangeRouter;
+module.exports = createTopicRouter;

@@ -51,10 +51,10 @@ public class SubscriptionService {
                     .orElseThrow(() -> new IllegalArgumentException("방송자를 찾을 수 없습니다."));
         }
 
-        // 3. CHANGE 이벤트일 경우 키워드 필수
-        if (dto.getEventType() == EventType.CHANGE &&
+        // 3. TOPIC 이벤트일 경우 키워드 필수
+        if (dto.getEventType() == EventType.TOPIC &&
                 (dto.getKeyword() == null || dto.getKeyword().trim().isEmpty())) {
-            throw new IllegalArgumentException("CHANGE 이벤트는 키워드가 필수입니다.");
+            throw new IllegalArgumentException("TOPIC 이벤트는 키워드가 필수입니다.");
         }
 
         if (dto.getStreamerId() != null) {
@@ -86,7 +86,7 @@ public class SubscriptionService {
 
         // 5. 기존 구독이 있으면 중복 키워드 확인 후 추가
         if (subscription != null) {
-            if (dto.getEventType() == EventType.CHANGE) {
+            if (dto.getEventType() == EventType.TOPIC) {
                 String keyword = dto.getKeyword().trim().toLowerCase();
 
                 boolean exists = subscription.getKeywords().stream()
@@ -112,8 +112,8 @@ public class SubscriptionService {
                     .active(true)
                     .build();
 
-            // 키워드 추가 (CHANGE 이벤트인 경우만)
-            if (dto.getEventType() == EventType.CHANGE) {
+            // 키워드 추가 (TOPIC 이벤트인 경우만)
+            if (dto.getEventType() == EventType.TOPIC) {
                 Keyword keyword = Keyword.builder()
                         .subscription(subscription)
                         .value(dto.getKeyword().trim().toLowerCase())
@@ -189,16 +189,16 @@ public class SubscriptionService {
                 .build();
     }
 
-    public void detectChangeEvent(LiveResponseDTO dto) {
+    public void detectTopicEvent(LiveResponseDTO dto) {
         String channelId = dto.getChannelId();
 
         // 1. 특정 방송자 구독
         List<Subscription> perStreamerSubs = subscriptionRepository
-                .findByStreamer_ChannelIdAndEventTypeAndActiveTrue(channelId, EventType.CHANGE);
+                .findByStreamer_ChannelIdAndEventTypeAndActiveTrue(channelId, EventType.TOPIC);
 
         // 2. 전체 방송자 구독
         List<Subscription> globalSubs = subscriptionRepository
-                .findByStreamerIsNullAndEventTypeAndActiveTrue(EventType.CHANGE);
+                .findByStreamerIsNullAndEventTypeAndActiveTrue(EventType.TOPIC);
 
         // 3. 통합 후 채널별 키워드 감지 정리
         Map<String, List<String>> notifyMap = new HashMap<>();
@@ -222,7 +222,7 @@ public class SubscriptionService {
             String discordChannelId = entry.getKey();
             List<String> matchedKeywords = entry.getValue();
 
-            notificationService.requestStreamChangeNotification(channelId, discordChannelId, matchedKeywords, dto);
+            notificationService.requestStreamTopicNotification(channelId, discordChannelId, matchedKeywords, dto);
         }
     }
 
