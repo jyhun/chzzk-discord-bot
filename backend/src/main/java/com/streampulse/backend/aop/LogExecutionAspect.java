@@ -20,7 +20,7 @@ public class LogExecutionAspect {
 
     private final MeterRegistry meterRegistry;
 
-    @Around("@annotation(com.streampulse.backend.aop.LogExecution) || execution(* com.streampulse.backend.service..*(..))")
+    @Around("@annotation(com.streampulse.backend.aop.LogExecution) || execution(* com.streampulse.backend.service..*.*(..))")
     public Object logExecution(ProceedingJoinPoint joinPoint) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();
         String className = signature.getDeclaringType().getSimpleName();
