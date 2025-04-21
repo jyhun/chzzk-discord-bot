@@ -1,6 +1,7 @@
 package com.streampulse.backend.service;
 
 import com.streampulse.backend.dto.LiveResponseDTO;
+import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.StreamerRepository;
@@ -43,10 +44,10 @@ public class StreamerService {
         for (Streamer streamer : streamerList) {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
                 updateLiveStatus(streamer, false);
+                StreamSession streamSession = streamSessionService.handleStreamEnd(streamer);
                 if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId()) && streamer.getAverageViewerCount() >= 10) {
-                    notificationService.requestStreamStatusNotification(streamer.getChannelId(), EventType.END);
+                    notificationService.requestStreamEndNotification(streamer, streamSession);
                 }
-                streamSessionService.handleStreamEnd(streamer);
             }
         }
     }

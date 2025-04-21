@@ -14,16 +14,18 @@ const bodyParser = require('body-parser');
 const { collectChatsForStreamEvent } = require('./crawler/crawler');
 const startBot = require('./discord/bot');
 const { client } = require('./discord/bot');
-const createNotificationRouter = require('./discord/notificationRouter');
-const createStreamStatusRouter = require('./discord/stream-status');
+const createStreamHotRouter = require('./discord/stream-hot');
+const createStreamStartRouter = require('./discord/stream-start');
+const createStreamEndRouter = require('./discord/stream-end');
 const createStreamChangeRouter = require('./discord/stream-change');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use('/api', createNotificationRouter(client));
-app.use('/api', createStreamStatusRouter(client));
+app.use('/api', createStreamHotRouter(client));
+app.use('/api', createStreamStartRouter(client));
+app.use('/api', createStreamEndRouter(client));
 app.use('/api', createStreamChangeRouter(client));
 
 // /crawler API: 채널 ID와 하이라이트 ID를 받아 크롤러를 실행합니다.

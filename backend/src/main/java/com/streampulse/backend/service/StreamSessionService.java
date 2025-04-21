@@ -39,7 +39,7 @@ public class StreamSessionService {
     }
 
 
-    public void handleStreamEnd(Streamer streamer) {
+    public StreamSession handleStreamEnd(Streamer streamer) {
         StreamSession streamSession = streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
                 .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));
         streamSession.updateEndedAt();
@@ -56,14 +56,13 @@ public class StreamSessionService {
         StreamMetrics streamMetrics = streamMetricsList.get(streamMetricsList.size() - 1);
         streamSession.addTags(streamMetrics.getTags());
 
-        int sessionPeekViewer = streamMetricsList.stream()
+        int sessionPeakViewer = streamMetricsList.stream()
                 .mapToInt(StreamMetrics::getViewerCount)
                 .max()
                 .orElse(0);
 
-        streamSession.updatePeekViewerCount(sessionPeekViewer);
+        streamSession.updatePeakViewerCount(sessionPeakViewer);
 
-        streamSessionRepository.save(streamSession);
 
         List<StreamSession> streamSessionList = streamSessionRepository.findByStreamerId(streamer.getId());
         int streamerAvgViewer = (int) streamSessionList.stream()
@@ -74,5 +73,6 @@ public class StreamSessionService {
         streamer.updateAverageViewerCount(streamerAvgViewer);
         streamerRepository.save(streamer);
 
+        return streamSessionRepository.save(streamSession);
     }
 }

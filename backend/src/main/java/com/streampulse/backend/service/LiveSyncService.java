@@ -49,8 +49,15 @@ public class LiveSyncService {
 
             if (!streamer.isLive()) {
                 streamerService.updateLiveStatus(streamer, true);
-                if (subscriptionService.hasSubscribersFor(EventType.START, channelId) && streamer.getAverageViewerCount() >= 10) {
-                    notificationService.requestStreamStatusNotification(channelId, EventType.START);
+
+                if (streamer.getAverageViewerCount() >= 10) {
+                    if (subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
+                        notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
+                    }
+
+                    if (subscriptionService.hasSubscribersFor(EventType.CHANGE, channelId)) {
+                        subscriptionService.detectChangeEvent(dto);
+                    }
                 }
             }
 

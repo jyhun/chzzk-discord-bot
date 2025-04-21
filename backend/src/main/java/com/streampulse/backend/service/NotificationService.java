@@ -2,9 +2,7 @@ package com.streampulse.backend.service;
 
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.NotificationRequestDTO;
-import com.streampulse.backend.entity.Notification;
-import com.streampulse.backend.entity.StreamEvent;
-import com.streampulse.backend.entity.StreamMetrics;
+import com.streampulse.backend.entity.*;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.NotificationRepository;
 import com.streampulse.backend.repository.StreamEventRepository;
@@ -15,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -52,16 +51,49 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    public void requestStreamStatusNotification(String channelId, EventType eventType) {
-        String url = processorUrl + "/api/stream-status";
+    public void requestStreamStartNotification(String channelId, String streamerName) {
+        String url = processorUrl + "/api/stream-start";
 
         Map<String, String> payload = new HashMap<>();
         payload.put("streamerId", channelId);
-        payload.put("eventType", eventType.name());
+        payload.put("streamerName", streamerName);
         restTemplate.postForEntity(url, payload, Void.class);
     }
 
-    public void requestChangeEventNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
+    public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
+        String url = processorUrl + "/api/stream-end";
+
+        String channelId = streamer.getChannelId();
+        String streamerName = streamer.getNickname();
+        int peakViewerCount = streamSession.getPeakViewerCount();
+        int averageViewerCount = streamSession.getAverageViewerCount();
+
+        LocalDateTime startedAt = streamSession.getStartedAt();
+        LocalDateTime endedAt = streamSession.getEndedAt();
+
+        Duration duration = Duration.between(startedAt, endedAt);
+        long hours = duration.toHours();
+        long minutes = duration.toMinutes() % 60;
+
+        String durationStr;
+        if (hours > 0) {
+            durationStr = String.format("%d시간 %d분", hours, minutes);
+        } else {
+            durationStr = String.format("%d분", minutes);
+        }
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("streamerId", channelId);
+        payload.put("streamerName", streamerName);
+        payload.put("peakViewerCount", peakViewerCount);
+        payload.put("averageViewerCount", averageViewerCount);
+        payload.put("duration", durationStr);
+
+        restTemplate.postForEntity(url, payload, Void.class);
+    }
+
+
+    public void requestStreamChangeNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         String url = processorUrl + "/api/stream-change";
 
         Map<String, Object> payload = new HashMap<>();
@@ -78,7 +110,7 @@ public class NotificationService {
 
 
     public void requestStreamHotNotification(StreamEvent streamEvent) {
-        String url = processorUrl + "/api/send-notification";
+        String url = processorUrl + "/api/stream-hot";
 
         // 한국 시간대로 시간대 설정
         ZoneId seoulZoneId = ZoneId.of("Asia/Seoul");

@@ -36,7 +36,7 @@ public class StreamSession extends BaseTimeEntity {
 
     private int averageViewerCount;
 
-    private int peekViewerCount;
+    private int peakViewerCount;
 
     @OneToMany(mappedBy = "streamSession", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
@@ -63,8 +63,8 @@ public class StreamSession extends BaseTimeEntity {
         this.averageViewerCount = averageViewerCount;
     }
 
-    public void updatePeekViewerCount(int peekViewerCount) {
-        this.peekViewerCount = peekViewerCount;
+    public void updatePeakViewerCount(int peakViewerCount) {
+        this.peakViewerCount = peakViewerCount;
     }
 
 }
