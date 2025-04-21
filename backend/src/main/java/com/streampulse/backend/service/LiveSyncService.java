@@ -2,6 +2,7 @@ package com.streampulse.backend.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
@@ -29,6 +30,7 @@ public class LiveSyncService {
 
     private static final String REDIS_KEY_PREFIX = "snapshot:";
 
+    @LogExecution
     public void syncLiveBroadcasts() {
         Set<String> liveStreamerIds = new HashSet<>();
         Set<String> visitedBroadcasterIds = new HashSet<>();

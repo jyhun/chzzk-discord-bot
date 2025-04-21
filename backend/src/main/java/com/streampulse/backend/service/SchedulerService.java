@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -17,11 +18,13 @@ public class SchedulerService {
     private final ReentrantLock lock = new ReentrantLock();
     private static final String REDIS_KEY = "deepScan:ready";
 
+    @LogExecution
     public void doDeepScan() {
         chzzkLiveService.fetchAndStoreValidCursors();
         redisTemplate.opsForValue().set(REDIS_KEY, "true", Duration.ofDays(1));
     }
 
+    @LogExecution
     public void doFastScan() {
         String ready = redisTemplate.opsForValue().get(REDIS_KEY);
         if (!"true".equals(ready)) return;
