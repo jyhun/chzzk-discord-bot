@@ -5,6 +5,7 @@ import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,8 +19,8 @@ public class StreamEventService {
 
     private final StreamEventRepository streamEventRepository;
     private final SubscriptionService subscriptionService;
-    private final ChatService chatService;
     private final RedisTemplate<String, String> redisTemplate;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public void saveStreamEvent(StreamMetrics metrics, Integer averageViewerCount) {
         String sessionId = metrics.getStreamSession().getId().toString();
@@ -28,14 +29,18 @@ public class StreamEventService {
             return;
         }
 
+        float viewerIncreaseRate = averageViewerCount == 0
+                ? 0.0f
+                : (float) metrics.getViewerCount() / averageViewerCount;
+
         StreamEvent streamEvent = StreamEvent.builder()
                 .streamMetrics(metrics)
                 .eventType(EventType.HOT)
                 .viewerCount(metrics.getViewerCount())
-                .viewerIncreaseRate((float) metrics.getViewerCount() / averageViewerCount)
+                .viewerIncreaseRate(viewerIncreaseRate)
                 .build();
 
-        streamEventRepository.save(streamEvent);
+        streamEvent = streamEventRepository.save(streamEvent);
 
         redisTemplate.opsForValue().set(sessionId, "HOT", Duration.ofDays(1));
 
@@ -43,6 +48,6 @@ public class StreamEventService {
             return;
         }
 
-        chatService.collectChatsForStreamEvent(streamEvent);
+        applicationEventPublisher.publishEvent(streamEvent.getId());
     }
 }

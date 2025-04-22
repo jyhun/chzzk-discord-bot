@@ -62,7 +62,7 @@ public class ChatService {
 
     public StreamEvent collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
-                .orElseThrow(() -> new IllegalArgumentException("하이라이트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new IllegalArgumentException("StreamEvent 찾을 수 없습니다."));
 
         StreamMetrics metrics = streamEvent.getStreamMetrics();
         String category = metrics.getCategory();
