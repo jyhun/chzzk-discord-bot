@@ -227,9 +227,9 @@ async function startBot() {
         const list = subscriptions.map(sub => {
           const event = sub.eventType || 'Unknown';
           const streamer = sub.streamerId ? `방송자 채널ID: ${sub.streamerId}` : '전체 방송자';
-          const keywords = sub.keywords && sub.keywords.length > 0
-            ? `키워드: ${sub.keywords.join(', ')}`
-            : '키워드 없음';
+          const keywords = event === 'TOPIC' && sub.keywords && sub.keywords.length > 0
+            ? ` / 키워드: ${sub.keywords.join(', ')}`
+            : '';
           return `- ${event} / ${streamer} / ${keywords}`;
         }).join('\n');
 
