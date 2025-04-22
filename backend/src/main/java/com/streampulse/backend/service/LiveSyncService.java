@@ -61,14 +61,15 @@ public class LiveSyncService {
                 }
             }
 
-            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
-
             // 변경 사항 있을 경우 알림
-            if (hasChanged(session.getId(), dto)) {
+            else if (hasChanged(session.getId(), dto)) {
                 if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId) && streamer.getAverageViewerCount() >= 10) {
                     subscriptionService.detectTopicEvent(dto);
                 }
             }
+
+            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
+
         }
 
         streamerService.markOfflineStreamers(liveStreamerIds);

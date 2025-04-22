@@ -93,11 +93,12 @@ public class NotificationService {
     }
 
 
-    public void requestStreamTopicNotification(String streamerChannelId, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
+    public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         String url = processorUrl + "/api/stream-topic";
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("streamerId", streamerChannelId);
+        payload.put("streamerName", streamerName);
         payload.put("discordChannelId", discordChannelId);
         payload.put("eventType", EventType.TOPIC.name());
         payload.put("keywords", matchedKeywords);
@@ -130,8 +131,19 @@ public class NotificationService {
         ZonedDateTime detectedAtSeoul = streamEvent.getCreatedAt().atZone(seoulZoneId);
         String formattedDate = detectedAtSeoul.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm"));
 
-        // 방송 시작 시각 (한국 시간)
-        ZonedDateTime startedAtSeoul = metrics.getStreamSession().getStartedAt().atZone(seoulZoneId);
+        LocalDateTime startedAt = metrics.getStreamSession().getStartedAt();
+        LocalDateTime endedAt = streamEvent.getCreatedAt();
+
+        Duration duration = Duration.between(startedAt, endedAt);
+        long hours = duration.toHours();
+        long minutes = duration.toMinutes() % 60;
+
+        String durationStr;
+        if (hours > 0) {
+            durationStr = String.format("%d시간 %d분", hours, minutes);
+        } else {
+            durationStr = String.format("%d분", minutes);
+        }
 
         // 평균 대비 증가율 계산 (0 division 방지)
         float viewerIncreaseRate = 0;
@@ -150,7 +162,7 @@ public class NotificationService {
         payload.put("viewerCount", viewerCount);
         payload.put("summary", summary);
         payload.put("formattedDate", formattedDate);
-        payload.put("startedAt", startedAtSeoul.toString());
+        payload.put("broadcastElapsedTime", durationStr);
         payload.put("viewerIncreaseRate", viewerIncreaseRate);
 
         // 전송

@@ -222,7 +222,7 @@ public class SubscriptionService {
             String discordChannelId = entry.getKey();
             List<String> matchedKeywords = entry.getValue();
 
-            notificationService.requestStreamTopicNotification(channelId, discordChannelId, matchedKeywords, dto);
+            notificationService.requestStreamTopicNotification(channelId, dto.getChannelName(), discordChannelId, matchedKeywords, dto);
         }
     }
 

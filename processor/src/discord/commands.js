@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('discord.js');
 
-const EVENT_DESC = '이벤트 종류 (HOT: 급상승, START: 방송 시작, END: 방송 종료, TOPIC: 카테고리 변경)';
+const EVENT_DESC = '이벤트 종류 (HOT: 급상승, START: 방송 시작, END: 방송 종료, TOPIC: 키워드 감지)';
 const TARGET_DESC = '방송자 채널 ID (비워두면 전체 방송자)';
 const KEYWORD_DESC = 'TOPIC 이벤트 전용 키워드 (예: 리그 오브 레전드)';
 

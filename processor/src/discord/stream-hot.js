@@ -20,7 +20,7 @@ function createStreamHotRouter(client) {
       viewerCount,
       summary,
       formattedDate,
-      startedAt,
+      broadcastElapsedTime,
       viewerIncreaseRate
     } = req.body;
 
@@ -39,12 +39,8 @@ function createStreamHotRouter(client) {
         console.info('[HOT] 구독자가 없어 알림 전송을 종료합니다.');
         return res.json({ message: '구독자가 없습니다.' });
       }
-
-      // 방송 시작 후 경과 시간 계산
-      const now = dayjs();
-      const started = dayjs(startedAt);
-      const diffMinutes = now.diff(started, 'minute');
-      const broadcastElapsedTime = `${diffMinutes}분 경과`;
+      
+      
 
       // 2. 구독자에게 알림 전송
       for (const subscriber of subscribers) {
