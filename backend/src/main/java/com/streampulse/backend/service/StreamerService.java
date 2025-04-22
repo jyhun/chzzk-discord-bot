@@ -45,7 +45,7 @@ public class StreamerService {
             if (!liveStreamerChannelIds.contains(streamer.getChannelId())) {
                 updateLiveStatus(streamer, false);
                 StreamSession streamSession = streamSessionService.handleStreamEnd(streamer);
-                if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId()) && streamer.getAverageViewerCount() >= 10) {
+                if (subscriptionService.hasSubscribersFor(EventType.END, streamer.getChannelId()) && streamer.getAverageViewerCount() >= 30) {
                     notificationService.requestStreamEndNotification(streamer, streamSession);
                 }
             }
