@@ -53,10 +53,9 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
     // 📌 구독 해제용 (Global)
     @Query("SELECT s FROM Subscription s " +
             "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
-            "AND s.streamer IS NULL " +
             "AND s.eventType = :eventType " +
             "AND s.active = true")
-    List<Subscription> findByActiveChannelAndGlobalAndEvent(@Param("discordChannelId") String discordChannelId,
+    List<Subscription> findByActiveChannelAndEventType(@Param("discordChannelId") String discordChannelId,
                                                             @Param("eventType") EventType eventType);
 
     // 📌 구독 해제용 (특정 방송자)
@@ -97,6 +96,18 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             @Param("discordChannelId") String discordChannelId,
             @Param("streamerChannelId") String streamerChannelId,
             @Param("eventType") EventType eventType
+    );
+
+    @Query("SELECT s FROM Subscription s " +
+            "WHERE s.discordChannel.discordChannelId = :discordChannelId " +
+            "  AND ((:streamerId IS NULL AND s.streamer IS NULL) " +
+            "       OR s.streamer.channelId = :streamerId) " +
+            "  AND s.eventType = :eventType " +
+            "  AND s.active = false")
+    Optional<Subscription> findInactiveByChannelAndStreamerAndEventType(
+            @Param("discordChannelId") String discordChannelId,
+            @Param("streamerId")      String streamerId,
+            @Param("eventType")       EventType eventType
     );
 
     @Query("""

@@ -42,4 +42,8 @@ public class Subscription extends BaseTimeEntity {
         this.active = false;
     }
 
+    public void inactivate() {
+        this.active = true;
+    }
+
 }

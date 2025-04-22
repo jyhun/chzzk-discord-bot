@@ -16,10 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -78,29 +75,31 @@ public class SubscriptionService {
         }
 
         // 4. 기존 구독 존재 여부 확인
-        Subscription subscription = subscriptionRepository.findActiveByChannelAndStreamerAndEventType(
-                discordChannel.getDiscordChannelId(),
-                streamer != null ? streamer.getChannelId() : null,
-                dto.getEventType()
-        ).orElse(null);
+        Optional<Subscription> existingOpt = subscriptionRepository
+                .findInactiveByChannelAndStreamerAndEventType(
+                        dto.getDiscordChannelId(),
+                        dto.getStreamerId(),
+                        dto.getEventType()
+                );
 
-        // 5. 기존 구독이 있으면 중복 키워드 확인 후 추가
-        if (subscription != null) {
+        Subscription subscription;
+
+        // 5. 기존 구독이 있으면 중복 키워드 확인 후 추가 (active false 일때)
+        if (existingOpt.isPresent()) {
+            subscription = existingOpt.get();
+            subscription.inactivate();
+
             if (dto.getEventType() == EventType.TOPIC) {
                 String keyword = dto.getKeyword().trim().toLowerCase();
-
-                boolean exists = subscription.getKeywords().stream()
-                        .anyMatch(k -> k.getValue().equalsIgnoreCase(keyword));
-
-                if (exists) {
-                    throw new IllegalStateException("이미 등록된 키워드입니다.");
+                if (subscription.getKeywords().stream().anyMatch(k -> k.getValue().equalsIgnoreCase(keyword))) {
+                    throw new IllegalArgumentException("이미 등록된 키워드입니다.");
                 }
-
-                Keyword newKeyword = Keyword.builder()
-                        .subscription(subscription)
-                        .value(keyword)
-                        .build();
-                subscription.getKeywords().add(newKeyword);
+                subscription.getKeywords().add(
+                        Keyword.builder()
+                                .subscription(subscription)
+                                .value(keyword)
+                                .build()
+                );
             }
 
         } else {
@@ -121,8 +120,8 @@ public class SubscriptionService {
                 subscription.getKeywords().add(keyword);
             }
 
-            subscriptionRepository.save(subscription);
         }
+        subscriptionRepository.save(subscription);
     }
 
 
@@ -164,7 +163,7 @@ public class SubscriptionService {
         if (dto.getEventType() == null) {
             subscriptions = subscriptionRepository.findActiveByChannel(dto.getDiscordChannelId());
         } else if (dto.getStreamerId() == null) {
-            subscriptions = subscriptionRepository.findByActiveChannelAndGlobalAndEvent(
+            subscriptions = subscriptionRepository.findByActiveChannelAndEventType(
                     dto.getDiscordChannelId(), dto.getEventType());
         } else {
             subscriptions = subscriptionRepository.findByActiveChannelAndStreamerAndEventForDeactivate(

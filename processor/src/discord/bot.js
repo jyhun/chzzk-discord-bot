@@ -225,12 +225,19 @@ async function startBot() {
         }
 
         const list = subscriptions.map(sub => {
+          const parts = [];
+
           const event = sub.eventType || 'Unknown';
+          parts.push(event);
+
           const streamer = sub.streamerId ? `방송자 채널ID: ${sub.streamerId}` : '전체 방송자';
-          const keywords = event === 'TOPIC' && sub.keywords && sub.keywords.length > 0
-            ? ` / 키워드: ${sub.keywords.join(', ')}`
-            : '';
-          return `- ${event} / ${streamer} / ${keywords}`;
+          parts.push(streamer);
+
+          if (event === 'TOPIC' && sub.keywords && sub.keywords.length > 0) {
+            parts.push(`키워드: ${sub.keywords.join(', ')}`);
+          }
+
+          return `- ${parts.join(' / ')}`;
         }).join('\n');
 
         await interaction.reply({
@@ -242,8 +249,9 @@ async function startBot() {
 
     } catch (error) {
       if (commandName === 'subscribe' && error.response?.status === 409) {
+        const msg = error.response.data.error || '오류가 발생했습니다.';
         return await interaction.reply({
-          content: '이미 구독 중인 대상입니다!',
+          content: msg,
           flags: MessageFlags.Ephemeral
         });
       }
