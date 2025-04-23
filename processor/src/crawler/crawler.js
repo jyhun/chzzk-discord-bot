@@ -24,9 +24,15 @@ async function collectChatsForStreamEvent(channelId, streamEventId) {
 
 async function getJoinPayload(channelId) {
   const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage();
+  const context = await browser.newContext();
+  const page = await context.newPage();
 
   try {
+    await page.goto(`https://chzzk.naver.com/live/${channelId}`, {
+      timeout: 60000,
+      waitUntil: 'domcontentloaded'
+    });
+
     const joinPayload = await new Promise((resolve) => {
       page.once('websocket', ws => {
         ws.once('framesent', frame => {
@@ -40,17 +46,17 @@ async function getJoinPayload(channelId) {
           }
         });
       });
-
-      page.goto(`https://chzzk.naver.com/live/${channelId}`, {
-        timeout: 60000,
-        waitUntil: 'domcontentloaded'
-      });
     });
 
     return joinPayload;
   } finally {
-    await page.close().catch(() => {});
-    await browser.close().catch(() => {});
+    try {
+      await page.close();
+      await context.close();
+      await browser.close();
+    } catch (err) {
+      console.error('크롬 종료 실패:', err.message);
+    }
   }
 }
 
