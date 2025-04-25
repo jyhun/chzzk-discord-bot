@@ -66,7 +66,7 @@ async function registerCommands() {
   try {
     console.info('[Command Registration] 시작...');
     await rest.put(
-      Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.DISCORD_GUILD_ID),
+      Routes.applicationCommands(process.env.DISCORD_CLIENT_ID),
       { body: commands.map(cmd => cmd.toJSON()) }
     );
     console.info('[Command Registration] 완료');
