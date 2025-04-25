@@ -54,6 +54,6 @@ jobs:
             git reset --hard origin/main
             sed -i 's|streampulse-backend:.*|streampulse-backend:${{ env.DATE_TAG }}|' infra/prod/docker-compose.yml
             sed -i 's|streampulse-processor:.*|streampulse-processor:${{ env.DATE_TAG }}|' infra/prod/docker-compose.yml
-            docker compose -f infra/prod/docker-compose.yml pull
-            docker compose -f infra/prod/docker-compose.yml up -d
+            docker compose -f infra/prod/docker-compose.yml pull backend processor
+            docker compose -f infra/prod/docker-compose.yml up -d backend processor
           EOF

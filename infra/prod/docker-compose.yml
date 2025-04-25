@@ -34,7 +34,7 @@ services:
     restart: always
 
   redis:
-    image: redis:7
+    image: redis:7.4.3
     container_name: redis
     ports:
       - "6379:6379"
@@ -58,7 +58,7 @@ services:
 
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v2.45.0
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -69,7 +69,7 @@ services:
     restart: always
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:9.5.2
     container_name: grafana
     ports:
       - "3000:3000"
@@ -99,7 +99,7 @@ services:
     restart: always
 
   node-exporter:
-    image: quay.io/prometheus/node-exporter:latest
+    image: quay.io/prometheus/node-exporter:v1.6.1
     container_name: node-exporter
     ports:
       - "9100:9100"
@@ -117,7 +117,7 @@ services:
       - monitoring-network      
 
   mysqld-exporter:
-    image: prom/mysqld-exporter
+    image: prom/mysqld-exporter:v0.14.0
     container_name: mysqld-exporter
     ports:
       - "9104:9104"
