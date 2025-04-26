@@ -32,23 +32,29 @@ services:
     networks:
       - app-network
     restart: always
-
+  
   redis:
     image: redis:7.4.3
     container_name: redis
     ports:
       - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}  
     command: [
       "redis-server",
       "--appendonly", "yes",
+      "--appendfsync", "always",              
       "--save", "900", "1",
       "--save", "300", "10",
-      "--save", "60", "10000"
+      "--save", "60", "10000",
+      "--requirepass", "${REDIS_PASSWORD}",   
+      "--rename-command", "FLUSHDB", "",    
+      "--rename-command", "FLUSHALL", ""      
     ]
     volumes:
       - redis-data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
