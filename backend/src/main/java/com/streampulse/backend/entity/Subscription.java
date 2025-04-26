@@ -34,7 +34,7 @@ public class Subscription extends BaseTimeEntity {
     @Column(nullable = false)
     private boolean active;
 
-    @OneToMany(mappedBy = "subscription", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "subscription", fetch = FetchType.LAZY, cascade = CascadeType.ALL,orphanRemoval = true)
     @Builder.Default
     private List<Keyword> keywords = new ArrayList<>();
 
@@ -42,7 +42,7 @@ public class Subscription extends BaseTimeEntity {
         this.active = false;
     }
 
-    public void inactivate() {
+    public void activate() {
         this.active = true;
     }
 

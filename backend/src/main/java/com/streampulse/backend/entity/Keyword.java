@@ -4,6 +4,12 @@ import com.streampulse.backend.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+@Table(
+        name = "keyword",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"subscription_id", "value"})
+        }
+)
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)

@@ -87,7 +87,7 @@ public class SubscriptionService {
         // 5. 기존 구독이 있으면 중복 키워드 확인 후 추가 (active false 일때)
         if (existingOpt.isPresent()) {
             subscription = existingOpt.get();
-            subscription.inactivate();
+            subscription.activate();
 
             if (dto.getEventType() == EventType.TOPIC) {
                 String keyword = dto.getKeyword().trim().toLowerCase();
@@ -158,8 +158,34 @@ public class SubscriptionService {
 
     // 구독 해제
     public void deactivateSubscription(SubscriptionRequestDTO dto) {
-        List<Subscription> subscriptions;
+        if(dto.getEventType() == EventType.TOPIC && dto.getKeyword() != null && dto.getKeyword().trim().isEmpty()) {
+            throw new IllegalArgumentException("키워드를 입력해주세요.");
+        }
+        // TOPIC + 키워드 지정 → 해당 키워드만 제거
+        if (dto.getEventType() == EventType.TOPIC && dto.getKeyword() != null) {
+            Subscription sub = subscriptionRepository
+                    .findByActiveChannelAndStreamerAndEventForDeactivate(
+                            dto.getDiscordChannelId(),
+                            dto.getStreamerId(),
+                            dto.getEventType()
+                    )
+                    .stream().findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("구독이 존재하지 않습니다."));
 
+            // 키워드만 제거
+            String kw = dto.getKeyword().trim().toLowerCase();
+            sub.getKeywords().removeIf(k -> k.getValue().equalsIgnoreCase(kw));
+
+            // 남은 키워드 없으면 전체 구독 비활성화
+            if (sub.getKeywords().isEmpty()) {
+                sub.deactivate();
+            }
+
+            subscriptionRepository.save(sub);
+            return;
+        }
+
+        List<Subscription> subscriptions;
         if (dto.getEventType() == null) {
             subscriptions = subscriptionRepository.findActiveByChannel(dto.getDiscordChannelId());
         } else if (dto.getStreamerId() == null) {
@@ -174,7 +200,12 @@ public class SubscriptionService {
             throw new IllegalArgumentException("구독이 존재하지 않습니다.");
         }
 
-        subscriptions.forEach(Subscription::deactivate);
+        subscriptions.forEach(sub -> {
+            // 전체 해제 시 키워드 전부 삭제
+            sub.getKeywords().clear();
+            sub.deactivate();
+        });
+        subscriptionRepository.saveAll(subscriptions);
     }
 
     // 공통 DTO 변환
