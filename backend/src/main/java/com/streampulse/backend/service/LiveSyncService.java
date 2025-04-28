@@ -7,12 +7,13 @@ import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
+import com.streampulse.backend.infra.RedisLiveStore;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -25,67 +26,88 @@ public class LiveSyncService {
     private final StreamMetricsService streamMetricsService;
     private final NotificationService notificationService;
     private final SubscriptionService subscriptionService;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final RedisLiveStore redisLiveStore;
     private final ObjectMapper objectMapper;
-
-    private static final String REDIS_KEY_PREFIX = "snapshot:";
 
     @LogExecution
     public void syncLiveBroadcasts() {
-        Set<String> liveStreamerIds = new HashSet<>();
-        Set<String> visitedBroadcasterIds = new HashSet<>();
-
+        // 현재 방송 목록 수집
         List<LiveResponseDTO> liveList = chzzkLiveService.collectLiveBroadcastersFromRedis();
+        Map<String, LiveResponseDTO> dtoMap = liveList.stream()
+                .collect(Collectors.toMap(LiveResponseDTO::getChannelId,
+                        dto -> dto,
+                        (existing, replacement) -> existing
+                ));
 
-        for (LiveResponseDTO dto : liveList) {
-            String channelId = dto.getChannelId();
+        Set<String> nextIds = dtoMap.keySet();
+        Set<String> currIds = redisLiveStore.getLiveStreamerIds();
 
-            if (!visitedBroadcasterIds.add(channelId)) continue;
+        Set<String> startIds = new HashSet<>(nextIds);
+        startIds.removeAll(currIds);
 
-            liveStreamerIds.add(channelId);
+        Set<String> endIds = new HashSet<>(currIds);
+        endIds.removeAll(nextIds);
 
+        redisLiveStore.updateLiveSet(startIds, endIds);
+
+        // START 처리
+        for (String id : startIds) {
+            LiveResponseDTO dto = dtoMap.get(id);
             Streamer streamer = streamerService.getOrCreateStreamer(dto);
-            StreamSession session = streamSessionService.getOrCreateSession(streamer, dto);
+            streamerService.updateLiveStatus(streamer, true);
 
-            if (!streamer.isLive()) {
-                streamerService.updateLiveStatus(streamer, true);
-
-                if (streamer.getAverageViewerCount() >= 30) {
-                    if (subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
-                        notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
-                    }
-
-                    if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
-                        subscriptionService.detectTopicEvent(dto);
-                    }
-                }
+            if (streamer.getAverageViewerCount() >= 30) {
+                if (subscriptionService.hasSubscribersFor(EventType.START, id))
+                    notificationService.requestStreamStartNotification(id, streamer.getNickname());
+                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id))
+                    subscriptionService.detectTopicEvent(dto);
             }
+        }
 
-            // 변경 사항 있을 경우 알림
-            else if (hasChanged(session.getId(), dto)) {
-                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId) && streamer.getAverageViewerCount() >= 30) {
+        // 세션 캐싱
+        Map<String, StreamSession> sessionMap = nextIds.stream()
+                .collect(Collectors.toMap(
+                        id -> id,
+                        id -> {
+                            LiveResponseDTO dto = dtoMap.get(id);
+                            Streamer streamer = streamerService.getOrCreateStreamer(dto);
+                            return streamSessionService.getOrCreateSession(streamer, dto);
+                        }
+                ));
+
+        // CHANGE 감지 및 메트릭 저장
+        for (String id : nextIds) {
+            LiveResponseDTO dto = dtoMap.get(id);
+            StreamSession session = sessionMap.get(id);
+            Streamer s = streamerService.getOrCreateStreamer(dto);
+
+            String currJson = serialize(dto);
+            String prevJson = redisLiveStore.getSnapshot(session.getId());
+
+            if (!currJson.equals(prevJson)) {
+                redisLiveStore.saveSnapshot(session.getId(), currJson);
+                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id)
+                        && s.getAverageViewerCount() >= 30) {
                     subscriptionService.detectTopicEvent(dto);
                 }
             }
-
-            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
-
+            streamMetricsService.saveMetrics(session, dto, s.getAverageViewerCount());
         }
 
-        streamerService.markOfflineStreamers(liveStreamerIds);
-    }
+        // END 처리
+        for (String id : endIds) {
+            Streamer s = streamerService.findByChannelId(id);
+            if (s != null) {
+                streamerService.updateLiveStatus(s, false);
+                StreamSession session = streamSessionService.handleStreamEnd(s);
 
-    private boolean hasChanged(Long sessionId, LiveResponseDTO dto) {
-        String redisKey = REDIS_KEY_PREFIX + sessionId;
-
-        String currJson = serialize(dto);
-        String prevJson = redisTemplate.opsForValue().get(redisKey);
-
-        if (!currJson.equals(prevJson)) {
-            redisTemplate.opsForValue().set(redisKey, currJson);
-            return true;
+                if (subscriptionService.hasSubscribersFor(EventType.END, id)
+                        && s.getAverageViewerCount() >= 30) {
+                    notificationService.requestStreamEndNotification(s, session);
+                }
+            }
         }
-        return false;
+
     }
 
     private String serialize(LiveResponseDTO dto) {
