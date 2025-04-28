@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
@@ -34,11 +35,13 @@ public class StreamerService {
                                 .build()));
     }
 
+    @LogExecution
     public void updateLiveStatus(Streamer streamer, boolean isLive) {
         streamer.updateLive(isLive);
         streamerRepository.save(streamer);
     }
 
+    @LogExecution
     public void markOfflineStreamers(Set<String> liveStreamerChannelIds) {
         List<Streamer> streamerList = streamerRepository.findByLiveIsTrue();
         for (Streamer streamer : streamerList) {

@@ -24,7 +24,6 @@ public class SchedulerService {
         redisTemplate.opsForValue().set(REDIS_KEY, "true", Duration.ofDays(1));
     }
 
-    @LogExecution
     public void doFastScan() {
         String ready = redisTemplate.opsForValue().get(REDIS_KEY);
         if (!"true".equals(ready)) return;

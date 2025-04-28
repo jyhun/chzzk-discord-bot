@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.SubscriptionRequestDTO;
 import com.streampulse.backend.dto.SubscriptionResponseDTO;
@@ -31,6 +32,7 @@ public class SubscriptionService {
     private final NotificationService notificationService;
 
     // 구독 생성
+    @LogExecution
     public void createSubscription(SubscriptionRequestDTO dto) {
         // 1. 디스코드 채널 조회 또는 생성
         DiscordChannel discordChannel = discordChannelRepository.findByDiscordChannelId(dto.getDiscordChannelId())
@@ -157,6 +159,7 @@ public class SubscriptionService {
     }
 
     // 구독 해제
+    @LogExecution
     public void deactivateSubscription(SubscriptionRequestDTO dto) {
         if(dto.getEventType() == EventType.TOPIC && dto.getKeyword() != null && dto.getKeyword().trim().isEmpty()) {
             throw new IllegalArgumentException("키워드를 입력해주세요.");
@@ -219,6 +222,7 @@ public class SubscriptionService {
                 .build();
     }
 
+    @LogExecution
     public void detectTopicEvent(LiveResponseDTO dto) {
         String channelId = dto.getChannelId();
 

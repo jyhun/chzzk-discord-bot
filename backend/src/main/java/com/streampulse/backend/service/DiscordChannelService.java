@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.DiscordChannelRequestDTO;
 import com.streampulse.backend.entity.DiscordChannel;
 import com.streampulse.backend.repository.DiscordChannelRepository;
@@ -14,6 +15,7 @@ public class DiscordChannelService {
 
     private final DiscordChannelRepository discordChannelRepository;
 
+    @LogExecution
     public void saveDiscordChannel(DiscordChannelRequestDTO request) {
         DiscordChannel discordChannel = discordChannelRepository.findByDiscordChannelId(request.getDiscordChannelId()).orElse(null);
 

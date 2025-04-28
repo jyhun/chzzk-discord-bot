@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.NotificationRequestDTO;
 import com.streampulse.backend.entity.*;
@@ -35,6 +36,7 @@ public class NotificationService {
     @Value("${processor.url}")
     private String processorUrl;
 
+    @LogExecution
     public void saveNotification(NotificationRequestDTO notificationRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(notificationRequestDTO.getStreamEventId())
                 .orElseThrow(() -> new IllegalArgumentException("방송 이벤트를 찾을 수 없습니다."));
@@ -51,6 +53,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @LogExecution
     public void requestStreamStartNotification(String channelId, String streamerName) {
         String url = processorUrl + "/api/stream-start";
 
@@ -60,6 +63,7 @@ public class NotificationService {
         restTemplate.postForEntity(url, payload, Void.class);
     }
 
+    @LogExecution
     public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
         String url = processorUrl + "/api/stream-end";
 
@@ -92,7 +96,7 @@ public class NotificationService {
         restTemplate.postForEntity(url, payload, Void.class);
     }
 
-
+    @LogExecution
     public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         String url = processorUrl + "/api/stream-topic";
 
@@ -109,7 +113,7 @@ public class NotificationService {
         restTemplate.postForEntity(url, payload, Void.class);
     }
 
-
+    @LogExecution
     public void requestStreamHotNotification(StreamEvent streamEvent) {
         String url = processorUrl + "/api/stream-hot";
 

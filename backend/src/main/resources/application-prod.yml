@@ -28,9 +28,13 @@ spring:
 logging:
   level:
     root: warn
+    com.streampulse.backend: info
+    org.springframework: warn
     org.hibernate.SQL: warn
     org.hibernate.type.descriptor.sql.BasicBinder: warn
-    org.hibernate.orm.jdbc.bind: warn
+    com.zaxxer.hikari: warn
+    org.springframework.data.redis.connection: warn
+    io.lettuce.core: warn
 
 management:
   endpoints:

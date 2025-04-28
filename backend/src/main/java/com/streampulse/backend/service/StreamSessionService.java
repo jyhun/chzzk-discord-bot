@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
@@ -39,6 +40,7 @@ public class StreamSessionService {
     }
 
 
+    @LogExecution
     public StreamSession handleStreamEnd(Streamer streamer) {
         StreamSession streamSession = streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
                 .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));

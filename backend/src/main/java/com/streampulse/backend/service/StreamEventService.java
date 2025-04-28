@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.entity.StreamEvent;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.enums.EventType;
@@ -22,6 +23,7 @@ public class StreamEventService {
     private final RedisTemplate<String, String> redisTemplate;
     private final ApplicationEventPublisher applicationEventPublisher;
 
+    @LogExecution
     public void saveStreamEvent(StreamMetrics metrics, Integer averageViewerCount) {
         String sessionId = metrics.getStreamSession().getId().toString();
 
