@@ -4,11 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
+import com.streampulse.backend.dto.StreamMetricsInputDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.RedisLiveStore;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -16,7 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -33,6 +39,9 @@ public class LiveSyncService {
     private final SubscriptionService subscriptionService;
     private final RedisLiveStore redisLiveStore;
     private final ObjectMapper objectMapper;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @LogExecution
     public void syncLiveBroadcasts() {
@@ -80,7 +89,7 @@ public class LiveSyncService {
             newStreamers.forEach(s -> streamerMap.put(s.getChannelId(), s));
         }
 
-        for (String id : startIds) {
+        startIds.parallelStream().forEach(id -> {
             Streamer streamer = streamerMap.get(id);
             streamerService.updateLiveStatus(streamer, true);
 
@@ -90,7 +99,7 @@ public class LiveSyncService {
                 if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id))
                     subscriptionService.detectTopicEvent(dtoMap.get(id));
             }
-        }
+        });
 
         List<StreamSession> newSessions = startIds.stream()
                 .map(id -> {
@@ -112,24 +121,26 @@ public class LiveSyncService {
     @LogExecution
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
-        if(nextIds.isEmpty()) return;
+        if (nextIds.isEmpty()) return;
 
-        nextIds.forEach(id -> {
+        List<StreamMetricsInputDTO> inputs = nextIds.parallelStream().map(id -> {
             LiveResponseDTO dto = dtoMap.get(id);
             Streamer streamer = streamerService.findByChannelId(id);
             StreamSession session = streamSessionService.getActiveSession(streamer);
 
             String currJson = serialize(dto);
             String prevJson = redisLiveStore.getSnapshot(session.getId());
-            if(!currJson.equals(prevJson)) {
+            if (!currJson.equals(prevJson)) {
                 redisLiveStore.saveSnapshot(session.getId(), currJson);
                 if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id)
                         && streamer.getAverageViewerCount() >= 30) {
                     subscriptionService.detectTopicEvent(dto);
                 }
             }
-            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
-        });
+            return StreamMetricsInputDTO.builder().session(session).dto(dto).averageViewerCount(streamer.getAverageViewerCount()).build();
+        }).toList();
+
+        streamMetricsService.saveMetricsBulk(inputs);
     }
 
     @LogExecution
@@ -157,17 +168,17 @@ public class LiveSyncService {
 
                     session.updatePeakViewerCount(sessionPeak);
 
-                    if(!metrics.isEmpty()) {
+                    if (!metrics.isEmpty()) {
                         session.addTags(metrics.get(metrics.size() - 1).getTags());
                     }
                 })
                 .toList();
 
-        if(!sessionsToEnd.isEmpty()) {
+        if (!sessionsToEnd.isEmpty()) {
             chunkedSaveAll(sessionsToEnd, streamSessionService::saveAll, 500);
         }
 
-        endStreamers.forEach(s -> {
+        endStreamers.parallelStream().forEach(s -> {
             List<StreamSession> allSessions = streamSessionService.findByStreamerId(s.getId());
             int streamerAvg = (int) allSessions.stream()
                     .mapToInt(StreamSession::getAverageViewerCount)
@@ -179,7 +190,7 @@ public class LiveSyncService {
 
         chunkedSaveAll(endStreamers, streamerService::saveAll, 500);
 
-        sessionsToEnd.forEach(session -> {
+        sessionsToEnd.parallelStream().forEach(session -> {
             Streamer streamer = session.getStreamer();
             String id = streamer.getChannelId();
             if (subscriptionService.hasSubscribersFor(EventType.END, id)
@@ -204,6 +215,8 @@ public class LiveSyncService {
     private <T> void chunkedSaveAll(List<T> list, Consumer<List<T>> saveFn, int chunkSize) {
         for (int i = 0; i < list.size(); i += chunkSize) {
             saveFn.accept(list.subList(i, Math.min(i + chunkSize, list.size())));
+            entityManager.flush();
+            entityManager.clear();
         }
     }
 }
