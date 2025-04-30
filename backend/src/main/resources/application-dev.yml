@@ -11,17 +11,17 @@ spring:
       hibernate:
         show_sql: false
         format_sql: false
-      javax:
-        persistence:
-          schema-generation:
-            scripts:
-              action: create
-              create-target: create.sql
+#      javax:
+#        persistence:
+#          schema-generation:
+#            scripts:
+#              action: create
+#              create-target: create.sql
 
 logging:
   level:
-    root: debug
-    org.hibernate.SQL: debug
+    root: info
+    org.hibernate.SQL: info
     org.hibernate.type.descriptor.sql.BasicBinder: trace
     org.hibernate.orm.jdbc.bind: trace
 
