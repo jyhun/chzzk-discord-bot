@@ -12,4 +12,5 @@ public interface StreamSessionRepository extends JpaRepository<StreamSession, Lo
     Optional<StreamSession> findByStreamer_ChannelIdAndEndedAtIsNull(String channelId);
     List<StreamSession> findByStreamerId(Long id);
     List<StreamSession> findAllByStreamerIn(Collection<Streamer> streamers);
+    boolean existsByStreamer_ChannelIdAndEndedAtIsNull(String channelId);
 }

@@ -10,6 +10,7 @@ import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.RedisLiveStore;
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
@@ -19,10 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -43,11 +42,22 @@ public class LiveSyncService {
     @PersistenceContext
     private EntityManager entityManager;
 
+    private final AtomicBoolean firstRun = new AtomicBoolean(true);
+
     @LogExecution
     public void syncLiveBroadcasts() {
-        List<LiveResponseDTO> liveList = chzzkLiveService.collectLiveBroadcastersFromRedis();
+        List<LiveResponseDTO> liveList = Optional.ofNullable(chzzkLiveService.collectLiveBroadcastersFromRedis())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(dto -> dto.getChannelId() != null)
+                .toList();
+        if (liveList.isEmpty()) return;
+
         Map<String, LiveResponseDTO> dtoMap = liveList.stream()
                 .collect(Collectors.toMap(LiveResponseDTO::getChannelId, dto -> dto, (e, r) -> e));
+
+        if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
         Set<String> currIds = redisLiveStore.getLiveStreamerIds();
@@ -60,8 +70,10 @@ public class LiveSyncService {
         redisLiveStore.updateLiveSet(startIds, endIds);
 
         handleStart(startIds, dtoMap);
-        handleTopic(nextIds, dtoMap);
         handleEnd(endIds);
+        handleTopic(nextIds, dtoMap);
+
+        firstRun.set(false);
     }
 
     @LogExecution
@@ -82,7 +94,8 @@ public class LiveSyncService {
                             .averageViewerCount(dto.getConcurrentUserCount())
                             .live(true)
                             .build();
-                }).toList();
+                })
+                .toList();
 
         if (!newStreamers.isEmpty()) {
             chunkedSaveAll(newStreamers, streamerService::saveAll, 500);
@@ -94,14 +107,15 @@ public class LiveSyncService {
             streamerService.updateLiveStatus(streamer, true);
 
             if (streamer.getAverageViewerCount() >= 30) {
-                if (subscriptionService.hasSubscribersFor(EventType.START, id))
+                if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.START, id))
                     notificationService.requestStreamStartNotification(id, streamer.getNickname());
-                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id))
+                if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.TOPIC, id))
                     subscriptionService.detectTopicEvent(dtoMap.get(id));
             }
         });
 
         List<StreamSession> newSessions = startIds.stream()
+                .filter(streamerMap::containsKey)
                 .map(id -> {
                     Streamer streamer = streamerMap.get(id);
                     LiveResponseDTO dto = dtoMap.get(id);
@@ -111,7 +125,8 @@ public class LiveSyncService {
                             .category(dto.getLiveCategoryValue())
                             .startedAt(LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                             .build();
-                }).toList();
+                })
+                .toList();
 
         if (!newSessions.isEmpty()) {
             chunkedSaveAll(newSessions, streamSessionService::saveAll, 500);
@@ -123,22 +138,26 @@ public class LiveSyncService {
     public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
         if (nextIds.isEmpty()) return;
 
-        List<StreamMetricsInputDTO> inputs = nextIds.parallelStream().map(id -> {
-            LiveResponseDTO dto = dtoMap.get(id);
-            Streamer streamer = streamerService.findByChannelId(id);
-            StreamSession session = streamSessionService.getActiveSession(streamer);
-
-            String currJson = serialize(dto);
-            String prevJson = redisLiveStore.getSnapshot(session.getId());
-            if (!currJson.equals(prevJson)) {
-                redisLiveStore.saveSnapshot(session.getId(), currJson);
-                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, id)
-                        && streamer.getAverageViewerCount() >= 30) {
-                    subscriptionService.detectTopicEvent(dto);
-                }
-            }
-            return StreamMetricsInputDTO.builder().session(session).dto(dto).averageViewerCount(streamer.getAverageViewerCount()).build();
-        }).toList();
+        List<StreamMetricsInputDTO> inputs = nextIds.parallelStream()
+                .filter(streamSessionService::existsActiveSessionByChannelId)
+                .map(id -> {
+                    LiveResponseDTO dto = dtoMap.get(id);
+                    Streamer streamer = streamerService.findByChannelId(id);
+                    if (streamer == null) return null;
+                    StreamSession session = streamSessionService.getActiveSession(streamer);
+                    String currJson = serialize(dto);
+                    String prevJson = redisLiveStore.getSnapshot(session.getId());
+                    if (!currJson.equals(prevJson)) {
+                        redisLiveStore.saveSnapshot(session.getId(), currJson);
+                        if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.TOPIC, id)
+                                && streamer.getAverageViewerCount() >= 30) {
+                            subscriptionService.detectTopicEvent(dto);
+                        }
+                    }
+                    return StreamMetricsInputDTO.builder().session(session).dto(dto).averageViewerCount(streamer.getAverageViewerCount()).build();
+                })
+                .filter(Objects::nonNull)
+                .toList();
 
         streamMetricsService.saveMetricsBulk(inputs);
     }
@@ -192,6 +211,7 @@ public class LiveSyncService {
 
         sessionsToEnd.parallelStream().forEach(session -> {
             Streamer streamer = session.getStreamer();
+            if (streamer == null) return;
             String id = streamer.getChannelId();
             if (subscriptionService.hasSubscribersFor(EventType.END, id)
                     && streamer.getAverageViewerCount() >= 30) {
@@ -213,10 +233,16 @@ public class LiveSyncService {
     }
 
     private <T> void chunkedSaveAll(List<T> list, Consumer<List<T>> saveFn, int chunkSize) {
+        if (list == null || list.isEmpty()) return;
         for (int i = 0; i < list.size(); i += chunkSize) {
             saveFn.accept(list.subList(i, Math.min(i + chunkSize, list.size())));
             entityManager.flush();
             entityManager.clear();
         }
+    }
+
+    @PostConstruct
+    public void init() {
+        redisLiveStore.clearLiveSet();
     }
 }

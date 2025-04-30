@@ -1,11 +1,14 @@
 package com.streampulse.backend.infra;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisOperations;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SessionCallback;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -29,27 +32,23 @@ public class RedisLiveStore {
         redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + sessionId, value, Duration.ofHours(6));
     }
 
-    /**
-     * add + remove 를 MULTI/EXEC 으로 원자적 처리
-     */
-    public void updateLiveSet(Set<String> toAdd, Set<String> toRemove) {
-        if (toAdd.isEmpty() && toRemove.isEmpty()) return;
+    public void updateLiveSet(Set<String> add, Set<String> remove) {
+        if (add.isEmpty() && remove.isEmpty()) return;
+        redisTemplate.execute(new SessionCallback<List<Object>>() {
+            @Override
+            public <K, V> List<Object> execute(RedisOperations<K, V> ops) {
+                ops.multi();
+                @SuppressWarnings("unchecked")
+                RedisOperations<String, String> o = (RedisOperations<String, String>) ops;
+                add.forEach(id -> o.opsForSet().add(LIVE_SET_KEY, id));
+                remove.forEach(id -> o.opsForSet().remove(LIVE_SET_KEY, id));
+                return ops.exec();
+            }
+        });
+    }
 
-        // 1) 트랜잭션 시작
-        redisTemplate.multi();
-        try {
-            // 2) add 처리
-            for (String id : toAdd) {
-                redisTemplate.opsForSet().add(LIVE_SET_KEY, id);
-            }
-            // 3) remove 처리
-            for (String id : toRemove) {
-                redisTemplate.opsForSet().remove(LIVE_SET_KEY, id);
-            }
-        } finally {
-            // 4) 트랜잭션 커밋 (모든 명령 한 번에 적용)
-            redisTemplate.exec();
-        }
+    public void clearLiveSet() {
+        redisTemplate.delete(LIVE_SET_KEY);
     }
 
 }

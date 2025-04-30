@@ -33,4 +33,8 @@ public class StreamSessionService {
     public List<StreamSession> findByStreamerId(Long id) {
         return streamSessionRepository.findByStreamerId(id);
     }
+
+    public boolean existsActiveSessionByChannelId(String channelId) {
+        return streamSessionRepository.existsByStreamer_ChannelIdAndEndedAtIsNull(channelId);
+    }
 }
