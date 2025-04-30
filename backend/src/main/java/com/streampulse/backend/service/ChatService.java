@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -62,8 +63,9 @@ public class ChatService {
         }
     }
 
+    @Async("notificationExecutor")
     @LogExecution
-    public StreamEvent collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
+    public void collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
                 .orElseThrow(() -> new IllegalArgumentException("StreamEvent 찾을 수 없습니다."));
 
@@ -133,8 +135,6 @@ public class ChatService {
         }
 
         notificationService.requestStreamHotNotification(streamEvent);
-
-        return streamEvent;
 
     }
 

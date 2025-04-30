@@ -1,8 +1,10 @@
 package com.streampulse.backend.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -10,7 +12,9 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import java.util.concurrent.Executor;
 
 @Configuration
-@EnableAsync
+@EnableAsync(proxyTargetClass = true)
+@EnableAspectJAutoProxy(proxyTargetClass = true)
+@Slf4j
 public class AsyncConfig implements AsyncConfigurer {
 
     @Bean(name = "notificationExecutor")
@@ -26,12 +30,13 @@ public class AsyncConfig implements AsyncConfigurer {
 
     @Override
     public Executor getAsyncExecutor() {
-        return AsyncConfigurer.super.getAsyncExecutor();
+        return notificationExecutor();
     }
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-        return AsyncConfigurer.super.getAsyncUncaughtExceptionHandler();
+        return (throwable, method, params) ->
+                log.error("Async error in {} with params {}", method.getName(), params, throwable);
     }
 
 }
