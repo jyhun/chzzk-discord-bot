@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.StreamMetricsInputDTO;
+import com.streampulse.backend.dto.SubscriptionCheckDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
@@ -21,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -83,6 +85,7 @@ public class LiveSyncService {
 
         Map<String, Streamer> streamerMap = streamerService.findAllByChannelIdIn(startIds).stream()
                 .collect(Collectors.toMap(Streamer::getChannelId, streamer -> streamer));
+        SubscriptionCheckDTO startCheck = subscriptionService.getSubscriptionCheck(EventType.START);
 
         List<Streamer> newStreamers = startIds.stream()
                 .filter(id -> !streamerMap.containsKey(id))
@@ -99,19 +102,17 @@ public class LiveSyncService {
 
         if (!newStreamers.isEmpty()) {
             chunkedSaveAll(newStreamers, streamerService::saveAll, 500);
-            newStreamers.forEach(s -> streamerMap.put(s.getChannelId(), s));
+            newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
         }
 
         startIds.parallelStream().forEach(id -> {
             Streamer streamer = streamerMap.get(id);
             streamerService.updateLiveStatus(streamer, true);
 
-            if (streamer.getAverageViewerCount() >= 30) {
-                if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.START, id))
-                    notificationService.requestStreamStartNotification(id, streamer.getNickname());
-                if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.TOPIC, id))
-                    subscriptionService.detectTopicEvent(dtoMap.get(id));
-            }
+            if (!firstRun.get()
+                    && streamer.getAverageViewerCount() >= 30
+                    && startCheck.isSubscribed(id))
+                notificationService.requestStreamStartNotification(id, streamer.getNickname());
         });
 
         List<StreamSession> newSessions = startIds.stream()
@@ -138,23 +139,37 @@ public class LiveSyncService {
     public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
         if (nextIds.isEmpty()) return;
 
+        Map<String,Boolean> existsCache = new ConcurrentHashMap<>();
+        Map<String, Streamer> streamerCache = new ConcurrentHashMap<>();
+        Map<String, StreamSession> sessionCache = new ConcurrentHashMap<>();
+        Map<String, String> jsonCache = new ConcurrentHashMap<>();
+        SubscriptionCheckDTO topicCheck = subscriptionService.getSubscriptionCheck(EventType.TOPIC);
+
         List<StreamMetricsInputDTO> inputs = nextIds.parallelStream()
-                .filter(streamSessionService::existsActiveSessionByChannelId)
+                .filter(id -> existsCache.computeIfAbsent(id,
+                        streamSessionService::existsActiveSessionByChannelId))
                 .map(id -> {
                     LiveResponseDTO dto = dtoMap.get(id);
-                    Streamer streamer = streamerService.findByChannelId(id);
+                    Streamer streamer = streamerCache.computeIfAbsent(id, streamerService::findByChannelId);
                     if (streamer == null) return null;
-                    StreamSession session = streamSessionService.getActiveSession(streamer);
-                    String currJson = serialize(dto);
+                    StreamSession session = sessionCache.computeIfAbsent(id,
+                            k -> streamSessionService.getActiveSession(streamer));
+
+                    String currJson = jsonCache.computeIfAbsent(id, k-> serialize(dto));
                     String prevJson = redisLiveStore.getSnapshot(session.getId());
                     if (!currJson.equals(prevJson)) {
                         redisLiveStore.saveSnapshot(session.getId(), currJson);
-                        if (!firstRun.get() && subscriptionService.hasSubscribersFor(EventType.TOPIC, id)
+                        if (!firstRun.get()
+                                && topicCheck.isSubscribed(id)
                                 && streamer.getAverageViewerCount() >= 30) {
                             subscriptionService.detectTopicEvent(dto);
                         }
                     }
-                    return StreamMetricsInputDTO.builder().session(session).dto(dto).averageViewerCount(streamer.getAverageViewerCount()).build();
+                    return StreamMetricsInputDTO.builder()
+                            .session(session)
+                            .dto(dto)
+                            .averageViewerCount(streamer.getAverageViewerCount())
+                            .build();
                 })
                 .filter(Objects::nonNull)
                 .toList();
@@ -167,6 +182,10 @@ public class LiveSyncService {
     public void handleEnd(Set<String> endIds) {
         if (endIds.isEmpty()) return;
 
+        Map<Long, List<StreamMetrics>> metricsCache = new ConcurrentHashMap<>();
+        Map<Long, List<StreamSession>> sessionCache = new ConcurrentHashMap<>();
+        SubscriptionCheckDTO endCheck = subscriptionService.getSubscriptionCheck(EventType.END);
+
         streamerService.markOffline(endIds);
 
         List<Streamer> endStreamers = streamerService.findAllByChannelIdIn(endIds);
@@ -175,7 +194,8 @@ public class LiveSyncService {
                 .peek(session -> {
                     session.updateEndedAt();
 
-                    List<StreamMetrics> metrics = streamMetricsService.findByStreamSessionId(session.getId());
+                    List<StreamMetrics> metrics = metricsCache.computeIfAbsent(
+                            session.getId(), streamMetricsService::findByStreamSessionId);
                     int sessionAvg = (int) metrics.stream()
                             .mapToInt(StreamMetrics::getViewerCount)
                             .average().orElse(0.0);
@@ -198,7 +218,8 @@ public class LiveSyncService {
         }
 
         endStreamers.parallelStream().forEach(s -> {
-            List<StreamSession> allSessions = streamSessionService.findByStreamerId(s.getId());
+            List<StreamSession> allSessions = sessionCache.computeIfAbsent(
+                    s.getId(), streamSessionService::findByStreamerId);
             int streamerAvg = (int) allSessions.stream()
                     .mapToInt(StreamSession::getAverageViewerCount)
                     .average().orElse(0.0);
@@ -213,8 +234,7 @@ public class LiveSyncService {
             Streamer streamer = session.getStreamer();
             if (streamer == null) return;
             String id = streamer.getChannelId();
-            if (subscriptionService.hasSubscribersFor(EventType.END, id)
-                    && streamer.getAverageViewerCount() >= 30) {
+            if (endCheck.isSubscribed(id) && streamer.getAverageViewerCount() >= 30) {
                 notificationService.requestStreamEndNotification(streamer, session);
             }
         });

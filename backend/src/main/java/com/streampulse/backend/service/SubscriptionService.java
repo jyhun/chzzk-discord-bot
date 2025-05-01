@@ -2,6 +2,7 @@ package com.streampulse.backend.service;
 
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
+import com.streampulse.backend.dto.SubscriptionCheckDTO;
 import com.streampulse.backend.dto.SubscriptionRequestDTO;
 import com.streampulse.backend.dto.SubscriptionResponseDTO;
 import com.streampulse.backend.entity.DiscordChannel;
@@ -14,9 +15,11 @@ import com.streampulse.backend.repository.StreamerRepository;
 import com.streampulse.backend.repository.SubscriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -30,6 +33,9 @@ public class SubscriptionService {
     private final StreamerRepository streamerRepository;
     private final DiscordChannelRepository discordChannelRepository;
     private final NotificationService notificationService;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    private static final String KEY_SUB_LIST = "cache:subsList:";
 
     // 구독 생성
     @LogExecution
@@ -130,13 +136,24 @@ public class SubscriptionService {
     // (내부) 방송자 기준 구독자 목록
     @Transactional(readOnly = true)
     public List<SubscriptionResponseDTO> getSubscriptions(String streamerId, EventType eventType) {
+        String key = KEY_SUB_LIST + streamerId + ":" + eventType;
+        Object cached = redisTemplate.opsForValue().get(key);
+
+        if (cached instanceof List) {
+            //noinspection unchecked
+            return (List<SubscriptionResponseDTO>) cached;
+        }
         List<Subscription> subscriptions = new ArrayList<>();
         subscriptions.addAll(subscriptionRepository.findByActiveStreamerAndEvent(streamerId, eventType));
         subscriptions.addAll(subscriptionRepository.findByActiveGlobalAndEvent(eventType));
 
-        return subscriptions.stream()
+        List<SubscriptionResponseDTO> result = subscriptions.stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
+
+        redisTemplate.opsForValue().set(key, result, Duration.ofSeconds(30));
+        return result;
+
     }
 
     // (디스코드 봇용) 사용자 구독 목록
@@ -260,6 +277,11 @@ public class SubscriptionService {
         }
     }
 
+    public SubscriptionCheckDTO getSubscriptionCheck(EventType eventType) {
+        HashSet<String> channelIds = new HashSet<>(subscriptionRepository.findActiveStreamerChannelIdsByEventType(eventType));
+        boolean hasGlobal = subscriptionRepository.existsGlobalSubscription(eventType);
+        return new SubscriptionCheckDTO(channelIds, hasGlobal);
+    }
 
     private boolean containsKeyword(String keyword, LiveResponseDTO dto) {
         keyword = keyword.toLowerCase();

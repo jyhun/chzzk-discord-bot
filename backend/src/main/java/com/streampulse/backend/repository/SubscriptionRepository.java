@@ -56,7 +56,7 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "AND s.eventType = :eventType " +
             "AND s.active = true")
     List<Subscription> findByActiveChannelAndEventType(@Param("discordChannelId") String discordChannelId,
-                                                            @Param("eventType") EventType eventType);
+                                                       @Param("eventType") EventType eventType);
 
     // 📌 구독 해제용 (특정 방송자)
     @Query("SELECT s FROM Subscription s " +
@@ -106,8 +106,8 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             "  AND s.active = false")
     Optional<Subscription> findInactiveByChannelAndStreamerAndEventType(
             @Param("discordChannelId") String discordChannelId,
-            @Param("streamerId")      String streamerId,
-            @Param("eventType")       EventType eventType
+            @Param("streamerId") String streamerId,
+            @Param("eventType") EventType eventType
     );
 
     @Query("""
@@ -148,5 +148,26 @@ public interface SubscriptionRepository extends JpaRepository<Subscription, Long
             @Param("eventType") EventType eventType,
             @Param("channelId") String channelId
     );
+
+    @Query("""
+                SELECT COUNT(s) > 0
+                FROM Subscription s
+                WHERE s.eventType = :eventType
+                  AND s.active = true
+                  AND s.streamer IS NULL
+            """)
+    boolean existsGlobalSubscription(@Param("eventType") EventType eventType);
+
+    @Query("""
+                SELECT s.streamer.channelId
+                  FROM Subscription s
+                 WHERE s.eventType    = :eventType
+                   AND s.active       = true
+                   AND s.streamer     IS NOT NULL
+            """)
+    List<String> findActiveStreamerChannelIdsByEventType(
+            @Param("eventType") EventType eventType
+    );
+
 
 }
