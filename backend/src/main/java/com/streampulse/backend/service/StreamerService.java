@@ -18,7 +18,9 @@ import java.util.Set;
 public class StreamerService {
 
     private final StreamerRepository streamerRepository;
+    private final ChunkService chunkService;
 
+    @Transactional(readOnly = true)
     public Streamer findByChannelId(String channelId) {
         return streamerRepository.findByChannelId(channelId).orElse(null);
     }
@@ -31,15 +33,19 @@ public class StreamerService {
         }
     }
 
+    @Transactional(readOnly = true)
     public List<Streamer> findAllByChannelIdIn(Collection<String> channelIds) {
         return streamerRepository.findAllByChannelIdIn(channelIds);
-    }
-
-    public void saveAll(List<Streamer> streamers) {
-        streamerRepository.saveAll(streamers);
     }
 
     public void markOffline(Set<String> endIds) {
         streamerRepository.markOffline(endIds);
     }
+
+    public void saveStreamersInChunks(List<Streamer> streamers, int chunkSize) {
+        for (int i = 0; i < streamers.size(); i += chunkSize) {
+            chunkService.saveStreamersChunk(streamers.subList(i, Math.min(i + chunkSize, streamers.size())));
+        }
+    }
+
 }

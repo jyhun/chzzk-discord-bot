@@ -8,6 +8,10 @@ spring:
     hibernate:
       ddl-auto: create
     properties:
+      hibernate.jdbc.batch_size: 50
+      hibernate.order_inserts: true
+      hibernate.order_updates: true
+      hibernate.generate_statistics: false
       hibernate:
         show_sql: false
         format_sql: false
@@ -26,10 +30,10 @@ app:
 
 logging:
   level:
-    root: info
-    org.hibernate.SQL: info
-    org.hibernate.type.descriptor.sql.BasicBinder: trace
-    org.hibernate.orm.jdbc.bind: trace
+    root: warn
+    org.hibernate.SQL: warn
+    org.hibernate.type.descriptor.sql.BasicBinder: warn
+    org.hibernate.orm.jdbc.bind: warn
 
 management:
   endpoints:

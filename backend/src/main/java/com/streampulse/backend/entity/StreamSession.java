@@ -63,12 +63,4 @@ public class StreamSession extends BaseTimeEntity {
         }
     }
 
-    public void updateAverageViewerCount(int averageViewerCount) {
-        this.averageViewerCount = averageViewerCount;
-    }
-
-    public void updatePeakViewerCount(int peakViewerCount) {
-        this.peakViewerCount = peakViewerCount;
-    }
-
 }

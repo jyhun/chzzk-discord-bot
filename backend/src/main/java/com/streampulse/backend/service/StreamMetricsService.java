@@ -3,16 +3,13 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.dto.StreamMetricsInputDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.repository.StreamMetricsRepository;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 @Service
 @Transactional
@@ -21,12 +18,9 @@ public class StreamMetricsService {
 
     private final StreamMetricsRepository streamMetricsRepository;
     private final StreamEventService streamEventService;
+    private final ChunkService chunkService;
 
-    @PersistenceContext
-    private EntityManager entityManager;
-
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void saveMetricsBulk(List<StreamMetricsInputDTO> inputs) {
+    public void saveMetricsInChunks(List<StreamMetricsInputDTO> inputs, int chunkSize) {
         List<StreamMetrics> batch = new ArrayList<>(inputs.size());
         List<Runnable> hotEvents = new ArrayList<>();
 
@@ -40,25 +34,27 @@ public class StreamMetricsService {
             metrics.addTags(input.getDto().getTags());
             batch.add(metrics);
 
-            if (metrics.getViewerCount() >= 1000 && metrics.getViewerCount() > input.getAverageViewerCount() * 1.5) {
-                hotEvents.add(() -> streamEventService.saveStreamEvent(metrics, input.getAverageViewerCount()));
+            if (metrics.getViewerCount() >= 1000
+                    && metrics.getViewerCount() > input.getAverageViewerCount() * 1.5) {
+                hotEvents.add(() ->
+                        streamEventService.saveStreamEvent(metrics, input.getAverageViewerCount())
+                );
             }
         }
 
-        chunkedSaveAll(batch, streamMetricsRepository::saveAll, 500);
+        for (int i = 0; i < batch.size(); i += chunkSize) {
+            List<StreamMetrics> chunk = batch.subList(i, Math.min(i + chunkSize, batch.size()));
+            chunkService.saveMetricsChunk(chunk);
+        }
+
         hotEvents.forEach(Runnable::run);
     }
 
+    @Transactional(readOnly = true)
     public List<StreamMetrics> findByStreamSessionId(Long id) {
-        return streamMetricsRepository.findByStreamSessionId(id);
-    }
-
-    private <T> void chunkedSaveAll(List<T> list, Consumer<List<T>> saveFn, int chunkSize) {
-        for (int i = 0; i < list.size(); i += chunkSize) {
-            saveFn.accept(list.subList(i, Math.min(i + chunkSize, list.size())));
-            entityManager.flush();
-            entityManager.clear();
-        }
+        List<StreamMetrics> metrics = streamMetricsRepository.findByStreamSessionId(id);
+        metrics.forEach(m -> Hibernate.initialize(m.getTags()));
+        return metrics;
     }
 
 }

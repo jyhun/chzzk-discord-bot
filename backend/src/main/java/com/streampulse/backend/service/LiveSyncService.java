@@ -12,8 +12,6 @@ import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.RedisLiveStore;
 import jakarta.annotation.PostConstruct;
-import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -24,7 +22,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,8 +38,7 @@ public class LiveSyncService {
     private final RedisLiveStore redisLiveStore;
     private final ObjectMapper objectMapper;
 
-    @PersistenceContext
-    private EntityManager entityManager;
+    private static final int CHUNK_SIZE = 100;
 
     private final AtomicBoolean firstRun = new AtomicBoolean(true);
 
@@ -101,11 +97,11 @@ public class LiveSyncService {
                 .toList();
 
         if (!newStreamers.isEmpty()) {
-            chunkedSaveAll(newStreamers, streamerService::saveAll, 500);
+            streamerService.saveStreamersInChunks(newStreamers, CHUNK_SIZE);
             newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
         }
 
-        startIds.parallelStream().forEach(id -> {
+        startIds.forEach(id -> {
             Streamer streamer = streamerMap.get(id);
             streamerService.updateLiveStatus(streamer, true);
 
@@ -130,7 +126,7 @@ public class LiveSyncService {
                 .toList();
 
         if (!newSessions.isEmpty()) {
-            chunkedSaveAll(newSessions, streamSessionService::saveAll, 500);
+            streamSessionService.saveSessionsInChunks(newSessions, CHUNK_SIZE);
         }
     }
 
@@ -145,7 +141,7 @@ public class LiveSyncService {
         Map<String, String> jsonCache = new ConcurrentHashMap<>();
         SubscriptionCheckDTO topicCheck = subscriptionService.getSubscriptionCheck(EventType.TOPIC);
 
-        List<StreamMetricsInputDTO> inputs = nextIds.parallelStream()
+        List<StreamMetricsInputDTO> inputs = nextIds.stream()
                 .filter(id -> existsCache.computeIfAbsent(id,
                         streamSessionService::existsActiveSessionByChannelId))
                 .map(id -> {
@@ -174,7 +170,7 @@ public class LiveSyncService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        streamMetricsService.saveMetricsBulk(inputs);
+        streamMetricsService.saveMetricsInChunks(inputs, CHUNK_SIZE);
     }
 
     @LogExecution
@@ -199,10 +195,10 @@ public class LiveSyncService {
                 .toList();
 
         if (!sessionsToEnd.isEmpty()) {
-            chunkedSaveAll(sessionsToEnd, streamSessionService::saveAll, 500);
+            streamSessionService.saveSessionsInChunks(sessionsToEnd, CHUNK_SIZE);
         }
 
-        sessionsToEnd.parallelStream().forEach(session -> {
+        sessionsToEnd.forEach(session -> {
             Streamer streamer = session.getStreamer();
             if (streamer == null) return;
             String id = streamer.getChannelId();
@@ -221,21 +217,12 @@ public class LiveSyncService {
     private String serialize(LiveResponseDTO dto) {
         try {
             return objectMapper.writeValueAsString(Map.of(
-                    "title", dto.getLiveTitle(),
-                    "category", dto.getLiveCategory(),
+                    "title", Optional.ofNullable(dto.getLiveTitle()).orElse(""),
+                    "category", Optional.ofNullable(dto.getLiveCategory()).orElse(""),
                     "tags", dto.getTags() != null ? dto.getTags() : List.of()
             ));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
-        }
-    }
-
-    private <T> void chunkedSaveAll(List<T> list, Consumer<List<T>> saveFn, int chunkSize) {
-        if (list == null || list.isEmpty()) return;
-        for (int i = 0; i < list.size(); i += chunkSize) {
-            saveFn.accept(list.subList(i, Math.min(i + chunkSize, list.size())));
-            entityManager.flush();
-            entityManager.clear();
         }
     }
 
