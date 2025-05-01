@@ -18,6 +18,12 @@ spring:
 #              action: create
 #              create-target: create.sql
 
+app:
+  scheduler:
+    retention-days: 30   # 세션/스트리머 집계 시 기준이 되는 지난 날 수
+    batch-size: 1000     # 페이지당 처리할 데이터 개수
+    cron: "0 0 12 * * *" # 크론 표현식
+
 logging:
   level:
     root: info
@@ -33,3 +39,4 @@ management:
 
 processor:
   url: ${PROCESSOR_BASE_URL}
+

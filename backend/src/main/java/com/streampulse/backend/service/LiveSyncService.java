@@ -139,7 +139,7 @@ public class LiveSyncService {
     public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
         if (nextIds.isEmpty()) return;
 
-        Map<String,Boolean> existsCache = new ConcurrentHashMap<>();
+        Map<String, Boolean> existsCache = new ConcurrentHashMap<>();
         Map<String, Streamer> streamerCache = new ConcurrentHashMap<>();
         Map<String, StreamSession> sessionCache = new ConcurrentHashMap<>();
         Map<String, String> jsonCache = new ConcurrentHashMap<>();
@@ -155,7 +155,7 @@ public class LiveSyncService {
                     StreamSession session = sessionCache.computeIfAbsent(id,
                             k -> streamSessionService.getActiveSession(streamer));
 
-                    String currJson = jsonCache.computeIfAbsent(id, k-> serialize(dto));
+                    String currJson = jsonCache.computeIfAbsent(id, k -> serialize(dto));
                     String prevJson = redisLiveStore.getSnapshot(session.getId());
                     if (!currJson.equals(prevJson)) {
                         redisLiveStore.saveSnapshot(session.getId(), currJson);
@@ -182,8 +182,6 @@ public class LiveSyncService {
     public void handleEnd(Set<String> endIds) {
         if (endIds.isEmpty()) return;
 
-        Map<Long, List<StreamMetrics>> metricsCache = new ConcurrentHashMap<>();
-        Map<Long, List<StreamSession>> sessionCache = new ConcurrentHashMap<>();
         SubscriptionCheckDTO endCheck = subscriptionService.getSubscriptionCheck(EventType.END);
 
         streamerService.markOffline(endIds);
@@ -193,20 +191,7 @@ public class LiveSyncService {
                 .filter(session -> session.getEndedAt() == null)
                 .peek(session -> {
                     session.updateEndedAt();
-
-                    List<StreamMetrics> metrics = metricsCache.computeIfAbsent(
-                            session.getId(), streamMetricsService::findByStreamSessionId);
-                    int sessionAvg = (int) metrics.stream()
-                            .mapToInt(StreamMetrics::getViewerCount)
-                            .average().orElse(0.0);
-                    session.updateAverageViewerCount(sessionAvg);
-
-                    int sessionPeak = metrics.stream()
-                            .mapToInt(StreamMetrics::getViewerCount)
-                            .max().orElse(0);
-
-                    session.updatePeakViewerCount(sessionPeak);
-
+                    List<StreamMetrics> metrics = streamMetricsService.findByStreamSessionId(session.getId());
                     if (!metrics.isEmpty()) {
                         session.addTags(metrics.get(metrics.size() - 1).getTags());
                     }
@@ -217,25 +202,18 @@ public class LiveSyncService {
             chunkedSaveAll(sessionsToEnd, streamSessionService::saveAll, 500);
         }
 
-        endStreamers.parallelStream().forEach(s -> {
-            List<StreamSession> allSessions = sessionCache.computeIfAbsent(
-                    s.getId(), streamSessionService::findByStreamerId);
-            int streamerAvg = (int) allSessions.stream()
-                    .mapToInt(StreamSession::getAverageViewerCount)
-                    .average().orElse(0.0);
-
-            s.updateAverageViewerCount(streamerAvg);
-
-        });
-
-        chunkedSaveAll(endStreamers, streamerService::saveAll, 500);
-
         sessionsToEnd.parallelStream().forEach(session -> {
             Streamer streamer = session.getStreamer();
             if (streamer == null) return;
             String id = streamer.getChannelId();
+            List<StreamMetrics> metrics = streamMetricsService.findByStreamSessionId(session.getId());
+            IntSummaryStatistics stats = metrics.stream()
+                    .mapToInt(StreamMetrics::getViewerCount)
+                    .summaryStatistics();
+            int avgViewer = (int) stats.getAverage();
+            int peakViewer = stats.getMax();
             if (endCheck.isSubscribed(id) && streamer.getAverageViewerCount() >= 30) {
-                notificationService.requestStreamEndNotification(streamer, session);
+                notificationService.requestStreamEndNotification(streamer, session, avgViewer, peakViewer);
             }
         });
     }

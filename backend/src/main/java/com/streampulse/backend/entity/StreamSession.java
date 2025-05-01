@@ -23,6 +23,10 @@ public class StreamSession extends BaseTimeEntity {
     @JoinColumn(name = "streamer_id", nullable = false)
     private Streamer streamer;
 
+    @OneToMany(mappedBy = "streamSession", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<StreamMetrics> metrics = new ArrayList<>();
+
     @Column(nullable = false)
     private String title;
 

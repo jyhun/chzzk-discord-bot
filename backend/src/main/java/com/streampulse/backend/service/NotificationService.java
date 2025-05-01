@@ -70,14 +70,12 @@ public class NotificationService {
     }
 
     @Async("notificationExecutor")
-    public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
+    public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession, int averageViewerCount, int peakViewerCount) {
         try {
             String url = processorUrl + "/api/stream-end";
 
             String channelId = streamer.getChannelId();
             String streamerName = streamer.getNickname();
-            int peakViewerCount = streamSession.getPeakViewerCount();
-            int averageViewerCount = streamSession.getAverageViewerCount();
 
             LocalDateTime startedAt = streamSession.getStartedAt();
             LocalDateTime endedAt = streamSession.getEndedAt();
