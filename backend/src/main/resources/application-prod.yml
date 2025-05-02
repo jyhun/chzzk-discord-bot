@@ -35,6 +35,8 @@ app:
     batch-size: 1000     # 페이지당 처리할 데이터 개수
     cron: "0 0 12 * * *" # 크론 표현식
 
+  viewer-threshold: 1
+
 logging:
   level:
     root: warn

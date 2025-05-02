@@ -7,7 +7,7 @@ import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,7 +20,7 @@ public class StreamEventService {
 
     private final StreamEventRepository streamEventRepository;
     private final SubscriptionService subscriptionService;
-    private final RedisTemplate<String, String> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @LogExecution

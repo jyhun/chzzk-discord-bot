@@ -22,18 +22,27 @@ spring:
 #              action: create
 #              create-target: create.sql
 
+  data:
+    redis:
+#      host: localhost
+      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD}
+
 app:
   scheduler:
-    retention-days: 30   # 세션/스트리머 집계 시 기준이 되는 지난 날 수
+    retention-days: 7   # 세션/스트리머 집계 시 기준이 되는 지난 날 수
     batch-size: 1000     # 페이지당 처리할 데이터 개수
-    cron: "0 0 12 * * *" # 크론 표현식
+    cron: "0 * * * * *" # 크론 표현식
+
+  viewer-threshold: 100
 
 logging:
   level:
-    root: warn
-    org.hibernate.SQL: warn
-    org.hibernate.type.descriptor.sql.BasicBinder: warn
-    org.hibernate.orm.jdbc.bind: warn
+    root: info
+    org.hibernate.SQL: info
+    org.hibernate.type.descriptor.sql.BasicBinder: info
+    org.hibernate.orm.jdbc.bind: info
 
 management:
   endpoints:

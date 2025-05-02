@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 3001
 
 # 8. 기본 실행
-CMD ["node", "index.js"]
+CMD ["node", "src/index.js"]

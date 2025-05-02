@@ -6,7 +6,7 @@ COPY --chown=gradle:gradle gradle/ gradle/
 COPY --chown=gradle:gradle gradlew .
 COPY --chown=gradle:gradle build.gradle* settings.gradle* ./
 
-RUN ./gradlew dependencies --no-daemon || return 0
+RUN ./gradlew dependencies --no-daemon || true
 
 COPY --chown=gradle:gradle . .
 

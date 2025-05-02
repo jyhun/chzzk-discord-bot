@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     build:
@@ -9,7 +7,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - ../../.env.dev
+      - .env
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - JAVA_OPTS=-Duser.timezone=Asia/Seoul -XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0
@@ -24,6 +22,7 @@ services:
     depends_on:
       - db
       - processor
+      - redis
 
   processor:
     build:
@@ -33,14 +32,13 @@ services:
     ports:
       - "3001:3001"
     env_file:
-      - ../../.env.dev
+      - .env
     volumes:
       - ../../logs/dev:/logs
     networks:
       - app-network
-    command: [ "node", "index.js" ]
+    command: ["node", "src/index.js"]
     restart: always
-
 
   db:
     image: mysql:8.0
@@ -62,8 +60,37 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7.4.3
+    container_name: redis
+    ports:
+      - "6379:6379"
+    environment:
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    command: [
+      "redis-server",
+      "--appendonly", "yes",
+      "--appendfsync", "always",
+      "--save", "900", "1",
+      "--save", "300", "10",
+      "--save", "60", "10000",
+      "--requirepass", "${REDIS_PASSWORD}",
+      "--rename-command", "FLUSHDB", "",
+      "--rename-command", "FLUSHALL", ""
+    ]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+    restart: always
+
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v2.45.0
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -71,9 +98,10 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     networks:
       - monitoring-network
+    restart: always
 
   grafana:
-    image: grafana/grafana
+    image: grafana/grafana:9.5.2
     container_name: grafana
     ports:
       - "3000:3000"
@@ -81,6 +109,7 @@ services:
       - monitoring-network
     volumes:
       - grafana-storage:/var/lib/grafana
+    restart: always
 
   loki:
     image: grafana/loki:2.9.1
@@ -89,6 +118,7 @@ services:
       - "3100:3100"
     networks:
       - monitoring-network
+    restart: always
 
   promtail:
     image: grafana/promtail:2.9.1
@@ -98,6 +128,46 @@ services:
       - ./promtail-config.yml:/etc/promtail/config.yml
     networks:
       - monitoring-network
+    restart: always
+
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:v1.6.1
+    container_name: node-exporter
+    ports:
+      - "9100:9100"
+    restart: always
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--path.rootfs=/rootfs'
+    networks:
+      - monitoring-network
+
+  mysqld-exporter:
+    image: prom/mysqld-exporter:v0.14.0
+    container_name: mysqld-exporter
+    ports:
+      - "9104:9104"
+    env_file:
+      - .env
+    entrypoint: >
+      sh -c "
+        echo '[client]' > /tmp/.my.cnf && \
+        echo 'user=$${DB_USER}' >> /tmp/.my.cnf && \
+        echo 'password=$${DB_PASSWORD}' >> /tmp/.my.cnf && \
+        echo 'host=$${DB_HOST}' >> /tmp/.my.cnf && \
+        echo 'database=$${DB_NAME}' >> /tmp/.my.cnf && \
+        /bin/mysqld_exporter --config.my-cnf=/tmp/.my.cnf
+      "
+    networks:
+      - monitoring-network
+      - app-network
+    restart: always
 
 networks:
   app-network:
@@ -108,3 +178,4 @@ networks:
 volumes:
   mysql-data:
   grafana-storage:
+  redis-data:

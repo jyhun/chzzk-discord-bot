@@ -2,8 +2,8 @@ package com.streampulse.backend.infra;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisOperations;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.time.Duration;
@@ -16,7 +16,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class RedisLiveStore {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
     private static final String LIVE_SET_KEY = "live:set";
     private static final String SNAPSHOT_PREFIX = "snapshot:";
 

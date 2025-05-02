@@ -7,7 +7,18 @@ scrape_configs:
     static_configs:
       - targets: [ "prometheus:9090" ]
 
-  - job_name: "backend"
+  - job_name: "backend-dev"
     metrics_path: "/actuator/prometheus"
     static_configs:
       - targets: [ "backend:8080" ]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+
+  - job_name: "node-exporter"
+    static_configs:
+      - targets: [ "node-exporter:9100" ]
+
+  - job_name: "mysql-exporter"
+    static_configs:
+      - targets: [ "mysqld-exporter:9104" ]
