@@ -6,8 +6,8 @@ spring:
     hikari:
       connection-timeout: 30000 # 커넥션 타임아웃 30초
       initialization-fail-timeout: -1 # 초기화 실패 시 무한 대기
-      maximum-pool-size: 10 # 커넥션 풀 사이즈, 기본 10
-      minimum-idle: 2 # 최소 아이들 커넥션
+      maximum-pool-size: 50 # 커넥션 풀 사이즈
+      minimum-idle: 10 # 최소 아이들 커넥션
       idle-timeout: 300000 # idle 커넥션 유지 시간 (5분)
       max-lifetime: 1800000 # 커넥션 최대 수명 (30분)
 
