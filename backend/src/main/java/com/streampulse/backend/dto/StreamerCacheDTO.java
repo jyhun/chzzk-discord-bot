@@ -21,6 +21,7 @@ public class StreamerCacheDTO {
     private boolean live;
     private int averageViewerCount;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public static StreamerCacheDTO fromEntity(Streamer streamer) {
         return StreamerCacheDTO.builder()
@@ -30,6 +31,7 @@ public class StreamerCacheDTO {
                 .live(streamer.isLive())
                 .averageViewerCount(streamer.getAverageViewerCount())
                 .createdAt(streamer.getCreatedAt())
+                .updatedAt(streamer.getUpdatedAt())
                 .build();
     }
 

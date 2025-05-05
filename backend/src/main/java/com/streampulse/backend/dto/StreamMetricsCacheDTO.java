@@ -17,14 +17,17 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class StreamMetricsCacheDTO {
 
+    private Long id;
     private int viewerCount;
     private String category;
     private String title;
     private List<String> tags;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public static StreamMetricsCacheDTO fromEntity(StreamMetrics metrics) {
         return StreamMetricsCacheDTO.builder()
+                .id(metrics.getId())
                 .viewerCount(metrics.getViewerCount())
                 .category(metrics.getCategory())
                 .title(metrics.getTitle())
@@ -34,6 +37,7 @@ public class StreamMetricsCacheDTO {
                                 .collect(Collectors.toList())
                         : List.of())
                 .createdAt(metrics.getCreatedAt())
+                .updatedAt(metrics.getUpdatedAt())
                 .build();
     }
 
