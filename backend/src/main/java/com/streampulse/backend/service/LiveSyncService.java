@@ -5,10 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.StreamMetricsInputDTO;
+import com.streampulse.backend.dto.StreamMetricsCacheDTO;
 import com.streampulse.backend.dto.SubscriptionCheckDTO;
-import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
+import com.streampulse.backend.entity.Tag;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.RedisLiveStore;
 import jakarta.annotation.PostConstruct;
@@ -150,7 +151,7 @@ public class LiveSyncService {
                     if (streamer == null) return null;
                     StreamSession session = sessionCache.computeIfAbsent(id,
                             k -> streamSessionService.getActiveSession(streamer));
-
+                    if (session == null) return null;
                     String currJson = jsonCache.computeIfAbsent(id, k -> serialize(dto));
                     String prevJson = redisLiveStore.getSnapshot(session.getId());
                     if (!currJson.equals(prevJson)) {
@@ -184,24 +185,22 @@ public class LiveSyncService {
 
         List<Streamer> endStreamers = streamerService.findAllByChannelIdIn(endIds);
 
-        Map<Long, List<StreamMetrics>> metricsCache = new HashMap<>();
+        Map<Long, List<StreamMetricsCacheDTO>> metricsCache = new HashMap<>();
 
         List<StreamSession> sessionsToEnd = streamSessionService.findAllByStreamerIn(endStreamers).stream()
                 .filter(session -> session.getEndedAt() == null)
                 .peek(session -> {
                     session.updateEndedAt();
-                    List<StreamMetrics> metrics = redisLiveStore.getMetrics(session.getId());
-                    if (metrics == null) {
-                        metrics = streamMetricsService.findByStreamSessionId(session.getId());
-                        if(!metrics.isEmpty()) {
-                            redisLiveStore.saveMetrics(session.getId(), metrics);
-                        }
-                    }
-
+                    List<StreamMetricsCacheDTO> metrics = streamMetricsService.findByStreamSessionId(session.getId());
                     metricsCache.put(session.getId(), metrics);
 
                     if (!metrics.isEmpty()) {
-                        session.addTags(metrics.get(metrics.size() - 1).getTags());
+                        List<Tag> tagList = new ArrayList<>();
+                        List<String> tags = metrics.get(metrics.size() - 1).getTags();
+                        for (String tag : tags) {
+                            tagList.add(Tag.builder().streamSession(session).value(tag).build());
+                        }
+                        session.addTags(tagList);
                     }
                 })
                 .toList();
@@ -214,9 +213,9 @@ public class LiveSyncService {
             Streamer streamer = session.getStreamer();
             if (streamer == null) return;
             String id = streamer.getChannelId();
-            List<StreamMetrics> metrics = metricsCache.getOrDefault(session.getId(), Collections.emptyList());
+            List<StreamMetricsCacheDTO> metrics = metricsCache.getOrDefault(session.getId(), Collections.emptyList());
             IntSummaryStatistics stats = metrics.stream()
-                    .mapToInt(StreamMetrics::getViewerCount)
+                    .mapToInt(StreamMetricsCacheDTO::getViewerCount)
                     .summaryStatistics();
             int avgViewer = (int) stats.getAverage();
             int peakViewer = stats.getMax();

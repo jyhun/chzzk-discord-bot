@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.SubscriptionCheckDTO;
@@ -34,6 +35,7 @@ public class SubscriptionService {
     private final DiscordChannelRepository discordChannelRepository;
     private final NotificationService notificationService;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final String KEY_SUB_LIST = "cache:subsList:";
 
@@ -137,11 +139,13 @@ public class SubscriptionService {
     @Transactional(readOnly = true)
     public List<SubscriptionResponseDTO> getSubscriptions(String streamerId, EventType eventType) {
         String key = KEY_SUB_LIST + streamerId + ":" + eventType;
-        Object cached = redisTemplate.opsForValue().get(key);
+        Object cachedObj = redisTemplate.opsForValue().get(key);
 
-        if (cached instanceof List) {
-            //noinspection unchecked
-            return (List<SubscriptionResponseDTO>) cached;
+        if (cachedObj != null) {
+            return objectMapper.convertValue(
+                    cachedObj,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, SubscriptionResponseDTO.class)
+            );
         }
         List<Subscription> subscriptions = new ArrayList<>();
         subscriptions.addAll(subscriptionRepository.findByActiveStreamerAndEvent(streamerId, eventType));

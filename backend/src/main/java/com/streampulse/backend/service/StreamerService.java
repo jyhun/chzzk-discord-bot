@@ -1,6 +1,8 @@
 package com.streampulse.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
+import com.streampulse.backend.dto.StreamerCacheDTO;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.repository.StreamerRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,18 +24,24 @@ public class StreamerService {
     private final StreamerRepository streamerRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ChunkService chunkService;
+    private final ObjectMapper objectMapper;
+
+
+    private static final String STREAMER_KEY = "streamer:";
     private static final Duration STREAMER_TTL = Duration.ofHours(1);
 
     @Transactional(readOnly = true)
     public Streamer findByChannelId(String channelId) {
-        String cacheKey = "streamer:" + channelId;
-        Streamer cached = (Streamer) redisTemplate.opsForValue().get(cacheKey);
-        if(cached != null) {
-            return cached;
+        String cacheKey = STREAMER_KEY + channelId;
+        Object cachedObj = redisTemplate.opsForValue().get(cacheKey);
+        if(cachedObj != null) {
+            StreamerCacheDTO dto = objectMapper.convertValue(cachedObj, StreamerCacheDTO.class);
+            return dto.toEntity();
         }
+
         Streamer streamer = streamerRepository.findByChannelId(channelId).orElse(null);
         if(streamer != null) {
-            redisTemplate.opsForValue().set(cacheKey, streamer, STREAMER_TTL);
+            redisTemplate.opsForValue().set(cacheKey, StreamerCacheDTO.fromEntity(streamer), STREAMER_TTL);
         }
         return streamer;
     }
@@ -43,7 +51,7 @@ public class StreamerService {
         if (streamer.isLive() != isLive) {
             streamer.updateLive(isLive);
             streamerRepository.save(streamer);
-            String cacheKey = "streamer:" + streamer.getChannelId();
+            String cacheKey = STREAMER_KEY + streamer.getChannelId();
             redisTemplate.delete(cacheKey);
         }
     }
@@ -55,7 +63,7 @@ public class StreamerService {
 
     public void markOffline(Set<String> endIds) {
         streamerRepository.markOffline(endIds);
-        endIds.forEach(id -> redisTemplate.delete("streamer:" + id));
+        endIds.forEach(id -> redisTemplate.delete(STREAMER_KEY + id));
     }
 
     public void saveStreamersInChunks(List<Streamer> streamers, int chunkSize) {

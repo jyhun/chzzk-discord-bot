@@ -1,13 +1,17 @@
 package com.streampulse.backend.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.dto.StreamMetricsInputDTO;
+import com.streampulse.backend.dto.StreamMetricsCacheDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.repository.StreamMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +23,11 @@ public class StreamMetricsService {
     private final StreamMetricsRepository streamMetricsRepository;
     private final StreamEventService streamEventService;
     private final ChunkService chunkService;
+    private final RedisTemplate<String, Object> redisTemplate;
+    private final ObjectMapper objectMapper;
+
+    private static final String METRICS_KEY = "metrics:session:";
+    private static final Duration METRICS_TTL = Duration.ofDays(1);
 
     public void saveMetricsInChunks(List<StreamMetricsInputDTO> inputs, int chunkSize) {
         List<StreamMetrics> batch = new ArrayList<>(inputs.size());
@@ -51,10 +60,29 @@ public class StreamMetricsService {
     }
 
     @Transactional(readOnly = true)
-    public List<StreamMetrics> findByStreamSessionId(Long id) {
-        List<StreamMetrics> metrics = streamMetricsRepository.findByStreamSessionId(id);
+    public List<StreamMetricsCacheDTO> findByStreamSessionId(Long sessionId) {
+        String cacheKey = METRICS_KEY + sessionId;
+        Object cachedObj = redisTemplate.opsForValue().get(cacheKey);
+
+        if (cachedObj != null) {
+            return objectMapper.convertValue(
+                    cachedObj,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, StreamMetricsCacheDTO.class)
+            );
+        }
+
+        List<StreamMetrics> metrics = streamMetricsRepository.findByStreamSessionId(sessionId);
         metrics.forEach(m -> Hibernate.initialize(m.getTags()));
-        return metrics;
+
+        List<StreamMetricsCacheDTO> dtoList = metrics.stream()
+                .map(StreamMetricsCacheDTO::fromEntity)
+                .toList();
+
+        if(!dtoList.isEmpty()) {
+            redisTemplate.opsForValue().set(cacheKey, dtoList, METRICS_TTL);
+        }
+
+        return dtoList;
     }
 
 }
