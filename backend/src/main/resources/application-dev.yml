@@ -6,7 +6,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: create-drop
     properties:
       hibernate.jdbc.batch_size: 50
       hibernate.order_inserts: true

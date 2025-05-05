@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface StreamSessionRepository extends JpaRepository<StreamSession, Long> {
-    Optional<StreamSession> findByStreamer_ChannelIdAndEndedAtIsNull(String channelId);
+    Optional<StreamSession> findFirstByStreamer_ChannelIdAndEndedAtIsNullOrderByStartedAtDesc(String channelId);
     List<StreamSession> findByStreamerId(Long id);
     List<StreamSession> findAllByStreamerIn(Collection<Streamer> streamers);
     boolean existsByStreamer_ChannelIdAndEndedAtIsNull(String channelId);

@@ -21,7 +21,7 @@ public class StreamSessionService {
 
     @Transactional(readOnly = true)
     public StreamSession getActiveSession(Streamer streamer) {
-        StreamSession session = streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
+        StreamSession session = streamSessionRepository.findFirstByStreamer_ChannelIdAndEndedAtIsNullOrderByStartedAtDesc(streamer.getChannelId())
                 .orElseThrow(() -> new IllegalArgumentException("방송중인 방송 세션을 찾을 수 없습니다."));
         Hibernate.initialize(session.getTags());
         return session;
