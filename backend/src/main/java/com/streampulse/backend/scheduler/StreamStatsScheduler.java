@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,7 @@ public class StreamStatsScheduler {
 
     private final StreamSessionRepository streamSessionRepository;
     private final StreamerRepository streamerRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     @Value("${app.scheduler.retention-days}")
     private int retentionDays;
@@ -81,11 +83,12 @@ public class StreamStatsScheduler {
         long startTime = System.nanoTime();
         log.info("[방송 데이터 삭제] 오래된 세션 및 매트릭 삭제 시작");
 
-        LocalDateTime threshold = LocalDateTime.now().minusDays(retentionDays);
-
-        int deletedSessions = streamSessionRepository.deleteOldSessions(threshold);
-        log.info("[방송 데이터 삭제] {}개의 세션(및 연결된 매트릭) 삭제 완료", deletedSessions);
-
+        try {
+            jdbcTemplate.execute("CALL delete_old_stream_sessions_and_metrics_safe()");
+            log.info("[방송 데이터 삭제] 프로시저 실행 완료");
+        } catch (Exception e) {
+            log.error("[방송 데이터 삭제] 프로시저 실행 중 오류 발생: {}", e.getMessage(), e);
+        }
         long elapsed = System.nanoTime() - startTime;
         log.info("[방송 데이터 삭제] 삭제 완료 (총 소요 시간: {} ms)", elapsed / 1_000_000);
     }

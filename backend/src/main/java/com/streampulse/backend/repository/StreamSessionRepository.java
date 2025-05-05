@@ -37,8 +37,4 @@ public interface StreamSessionRepository extends JpaRepository<StreamSession, Lo
     )
     int bulkUpdateSessionStats(@Param("threshold") LocalDateTime threshold);
 
-    @Modifying
-    @Query("DELETE FROM StreamSession s WHERE s.endedAt < :threshold")
-    int deleteOldSessions(@Param("threshold") LocalDateTime threshold);
-
 }
