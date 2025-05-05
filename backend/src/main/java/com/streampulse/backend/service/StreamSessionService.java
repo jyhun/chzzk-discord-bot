@@ -5,9 +5,11 @@ import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.repository.StreamSessionRepository;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 
@@ -17,14 +19,35 @@ import java.util.List;
 public class StreamSessionService {
 
     private final StreamSessionRepository streamSessionRepository;
+    private final RedisTemplate<String, Object> redisTemplate;
     private final ChunkService chunkService;
+    private static final Duration SESSION_TTL = Duration.ofMinutes(10);
 
     @Transactional(readOnly = true)
     public StreamSession getActiveSession(Streamer streamer) {
-        StreamSession session = streamSessionRepository.findFirstByStreamer_ChannelIdAndEndedAtIsNullOrderByStartedAtDesc(streamer.getChannelId())
+        String sessionKey = "active_session:" + streamer.getChannelId();
+
+        StreamSession session = (StreamSession) redisTemplate.opsForValue().get(sessionKey);
+        if (session != null) {
+            return session;
+        }
+        session = streamSessionRepository.findFirstByStreamer_ChannelIdAndEndedAtIsNullOrderByStartedAtDesc(streamer.getChannelId())
                 .orElseThrow(() -> new IllegalArgumentException("방송중인 방송 세션을 찾을 수 없습니다."));
         Hibernate.initialize(session.getTags());
+        redisTemplate.opsForValue().set(sessionKey, session, SESSION_TTL);
         return session;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean existsActiveSessionByChannelId(String channelId) {
+        String existsKey = "active_session_exists:" + channelId;
+
+        Boolean exists = (Boolean) redisTemplate.opsForValue().get(existsKey);
+        if (exists == null) {
+            exists =  streamSessionRepository.existsByStreamer_ChannelIdAndEndedAtIsNull(channelId);
+            redisTemplate.opsForValue().set(existsKey, exists, SESSION_TTL);
+        }
+        return exists;
     }
 
     @Transactional(readOnly = true)
@@ -32,11 +55,6 @@ public class StreamSessionService {
         List<StreamSession> sessions = streamSessionRepository.findAllByStreamerIn(streamers);
         sessions.forEach(s -> Hibernate.initialize(s.getTags()));
         return sessions;
-    }
-
-    @Transactional(readOnly = true)
-    public boolean existsActiveSessionByChannelId(String channelId) {
-        return streamSessionRepository.existsByStreamer_ChannelIdAndEndedAtIsNull(channelId);
     }
 
     public void saveSessionsInChunks(List<StreamSession> sessions, int chunkSize) {

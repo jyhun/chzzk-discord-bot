@@ -183,11 +183,23 @@ public class LiveSyncService {
         streamerService.markOffline(endIds);
 
         List<Streamer> endStreamers = streamerService.findAllByChannelIdIn(endIds);
+
+        Map<Long, List<StreamMetrics>> metricsCache = new HashMap<>();
+
         List<StreamSession> sessionsToEnd = streamSessionService.findAllByStreamerIn(endStreamers).stream()
                 .filter(session -> session.getEndedAt() == null)
                 .peek(session -> {
                     session.updateEndedAt();
-                    List<StreamMetrics> metrics = streamMetricsService.findByStreamSessionId(session.getId());
+                    List<StreamMetrics> metrics = redisLiveStore.getMetrics(session.getId());
+                    if (metrics == null) {
+                        metrics = streamMetricsService.findByStreamSessionId(session.getId());
+                        if(!metrics.isEmpty()) {
+                            redisLiveStore.saveMetrics(session.getId(), metrics);
+                        }
+                    }
+
+                    metricsCache.put(session.getId(), metrics);
+
                     if (!metrics.isEmpty()) {
                         session.addTags(metrics.get(metrics.size() - 1).getTags());
                     }
@@ -202,7 +214,7 @@ public class LiveSyncService {
             Streamer streamer = session.getStreamer();
             if (streamer == null) return;
             String id = streamer.getChannelId();
-            List<StreamMetrics> metrics = streamMetricsService.findByStreamSessionId(session.getId());
+            List<StreamMetrics> metrics = metricsCache.getOrDefault(session.getId(), Collections.emptyList());
             IntSummaryStatistics stats = metrics.stream()
                     .mapToInt(StreamMetrics::getViewerCount)
                     .summaryStatistics();
