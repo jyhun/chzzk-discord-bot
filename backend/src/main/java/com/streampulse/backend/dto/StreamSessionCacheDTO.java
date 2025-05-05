@@ -23,6 +23,7 @@ public class StreamSessionCacheDTO {
     private LocalDateTime startedAt;
     private LocalDateTime endedAt;
     private List<String> tags;
+    private LocalDateTime createdAt;
 
     public static StreamSessionCacheDTO fromEntity(StreamSession session) {
         return StreamSessionCacheDTO.builder()
@@ -33,6 +34,7 @@ public class StreamSessionCacheDTO {
                 .tags(session.getTags().stream()
                         .map(Tag::getValue)
                         .collect(Collectors.toList()))
+                .createdAt(session.getCreatedAt())
                 .build();
     }
 

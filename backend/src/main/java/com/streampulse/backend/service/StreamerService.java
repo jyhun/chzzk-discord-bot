@@ -26,7 +26,6 @@ public class StreamerService {
     private final ChunkService chunkService;
     private final ObjectMapper objectMapper;
 
-
     private static final String STREAMER_KEY = "streamer:";
     private static final Duration STREAMER_TTL = Duration.ofHours(1);
 

@@ -7,6 +7,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Builder
 @AllArgsConstructor
@@ -18,6 +20,7 @@ public class StreamerCacheDTO {
     private String nickname;
     private boolean live;
     private int averageViewerCount;
+    private LocalDateTime createdAt;
 
     public static StreamerCacheDTO fromEntity(Streamer streamer) {
         return StreamerCacheDTO.builder()
@@ -26,6 +29,7 @@ public class StreamerCacheDTO {
                 .nickname(streamer.getNickname())
                 .live(streamer.isLive())
                 .averageViewerCount(streamer.getAverageViewerCount())
+                .createdAt(streamer.getCreatedAt())
                 .build();
     }
 
