@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -70,4 +71,8 @@ public class StreamSessionService {
         }
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void updateSessionEndedAt(StreamSession session) {
+        session.updateEndedAt();
+    }
 }

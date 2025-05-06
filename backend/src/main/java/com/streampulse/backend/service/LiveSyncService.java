@@ -213,21 +213,25 @@ public class LiveSyncService {
 
             List<StreamSession> sessionsToEnd = streamSessionService.findAllByStreamerIn(endStreamers).stream()
                     .filter(session -> session.getEndedAt() == null)
-                    .peek(session -> {
-                        session.updateEndedAt();
-                        List<StreamMetricsCacheDTO> metrics = streamMetricsService.findByStreamSessionId(session.getId());
-                        metricsCache.put(session.getId(), metrics);
-
-                        if (!metrics.isEmpty()) {
-                            List<Tag> tagList = new ArrayList<>();
-                            List<String> tags = metrics.get(metrics.size() - 1).getTags();
-                            for (String tag : tags) {
-                                tagList.add(Tag.builder().streamSession(session).value(tag).build());
-                            }
-                            session.addTags(tagList);
-                        }
-                    })
                     .toList();
+
+            for (StreamSession session : sessionsToEnd) {
+                streamSessionService.updateSessionEndedAt(session);
+            }
+
+            for (StreamSession session : sessionsToEnd) {
+                List<StreamMetricsCacheDTO> metrics = streamMetricsService.findByStreamSessionId(session.getId());
+                metricsCache.put(session.getId(), metrics);
+
+                if (!metrics.isEmpty()) {
+                    List<Tag> tagList = new ArrayList<>();
+                    List<String> tags = metrics.get(metrics.size() - 1).getTags();
+                    for (String tag : tags) {
+                        tagList.add(Tag.builder().streamSession(session).value(tag).build());
+                    }
+                    session.addTags(tagList);
+                }
+            }
 
             if (!sessionsToEnd.isEmpty()) {
                 streamSessionService.saveSessionsInChunks(sessionsToEnd, CHUNK_SIZE);
