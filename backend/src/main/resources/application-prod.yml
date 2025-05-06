@@ -6,7 +6,7 @@ spring:
     hikari:
       connection-timeout: 30000 # 커넥션 타임아웃 30초
       initialization-fail-timeout: -1 # 초기화 실패 시 무한 대기
-      maximum-pool-size: 50 # 커넥션 풀 사이즈
+      maximum-pool-size: 30 # 커넥션 풀 사이즈
       minimum-idle: 10 # 최소 아이들 커넥션
       idle-timeout: 300000 # idle 커넥션 유지 시간 (5분)
       max-lifetime: 1800000 # 커넥션 최대 수명 (30분)
@@ -15,7 +15,7 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
-      hibernate.jdbc.batch_size: 20
+      hibernate.jdbc.batch_size: 50
       hibernate.order_inserts: true
       hibernate.order_updates: true
       hibernate.generate_statistics: false
@@ -35,7 +35,7 @@ app:
     batch-size: 1000     # 페이지당 처리할 데이터 개수
     cron: "0 0 12 * * *" # 크론 표현식
 
-  viewer-threshold: 30
+  viewer-threshold: 10
 
 logging:
   level:

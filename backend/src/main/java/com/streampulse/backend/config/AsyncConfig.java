@@ -11,7 +11,6 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.Arrays;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 @EnableAsync(proxyTargetClass = true)
@@ -22,37 +21,12 @@ public class AsyncConfig implements AsyncConfigurer {
     @Bean(name = "taskExecutor")
     public ThreadPoolTaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(20);
-        executor.setMaxPoolSize(50);
-        executor.setQueueCapacity(500);
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(30);
+        executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("task-");
-        executor.setKeepAliveSeconds(300);
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
-
-        new Thread(() -> {
-            while (true) {
-                try {
-                    Thread.sleep(60000);
-                    adjustThreadPoolSize(executor);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }).start();
-
         return executor;
-    }
-
-    private void adjustThreadPoolSize(ThreadPoolTaskExecutor executor) {
-        int queueSize = executor.getThreadPoolExecutor().getQueue().size();
-        int corePoolSize = executor.getCorePoolSize();
-
-        if (queueSize > 100) {
-            executor.setCorePoolSize(Math.min(corePoolSize + 10, 50));
-        } else {
-            executor.setCorePoolSize(Math.max(corePoolSize - 5, 20));
-        }
     }
 
     @Override
@@ -63,6 +37,6 @@ public class AsyncConfig implements AsyncConfigurer {
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (throwable, method, params) ->
-                log.error("Async 작업에서 오류 발생: " + method.getName() + " 매개변수: " + Arrays.toString(params), throwable);
+                log.error("Async 작업에서 오류 발생: {} 매개변수: {}", method.getName(), Arrays.toString(params), throwable);
     }
 }
