@@ -64,8 +64,16 @@ public class LiveSyncHandleService {
                     .toList();
 
             if (!newStreamers.isEmpty()) {
-                streamerService.saveStreamersInChunks(newStreamers, CHUNK_SIZE);
-                newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
+                try {
+                    streamerService.saveStreamersInChunks(newStreamers, CHUNK_SIZE);
+                    newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
+                } catch (Exception e) {
+                    if (e.getCause() != null && e.getCause().getMessage().contains("Duplicate entry")) {
+                        log.warn("streamer insert 중복 발생, 무시 처리: {}", e.getMessage());
+                    } else {
+                        throw e;
+                    }
+                }
             }
 
             startIds.forEach(id -> {

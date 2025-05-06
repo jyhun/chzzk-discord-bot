@@ -15,7 +15,7 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
-      hibernate.jdbc.batch_size: 50
+      hibernate.jdbc.batch_size: 20
       hibernate.order_inserts: true
       hibernate.order_updates: true
       hibernate.generate_statistics: false
@@ -35,7 +35,7 @@ app:
     batch-size: 1000     # 페이지당 처리할 데이터 개수
     cron: "0 0 12 * * *" # 크론 표현식
 
-  viewer-threshold: 1
+  viewer-threshold: 30
 
 logging:
   level:
