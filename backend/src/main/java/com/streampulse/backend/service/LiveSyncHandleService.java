@@ -70,6 +70,12 @@ public class LiveSyncHandleService {
                 } catch (Exception e) {
                     if (e.getCause() != null && e.getCause().getMessage().contains("Duplicate entry")) {
                         log.warn("streamer insert 중복 발생, 무시 처리: {}", e.getMessage());
+
+                        List<String> failedIds = newStreamers.stream()
+                                .map(Streamer::getChannelId)
+                                .toList();
+                        streamerService.findAllByChannelIdIn(new HashSet<>(failedIds))
+                                .forEach(s -> streamerMap.put(s.getChannelId(), s));
                     } else {
                         throw e;
                     }
@@ -78,6 +84,10 @@ public class LiveSyncHandleService {
 
             startIds.forEach(id -> {
                 Streamer streamer = streamerMap.get(id);
+                if (streamer == null) {
+                    log.warn("streamerMap 에 없는 id 발견: {}", id);
+                    return;
+                }
                 streamerService.updateLiveStatus(streamer, true);
 
                 if (!firstRun.get()
