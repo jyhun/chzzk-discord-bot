@@ -54,7 +54,7 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    @Async("notificationExecutor")
+    @Async("taskExecutor")
     public void requestStreamStartNotification(String channelId, String streamerName) {
         try {
             String url = processorUrl + "/api/stream-start";
@@ -69,7 +69,7 @@ public class NotificationService {
         }
     }
 
-    @Async("notificationExecutor")
+    @Async("taskExecutor")
     public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession, int averageViewerCount, int peakViewerCount) {
         try {
             String url = processorUrl + "/api/stream-end";
@@ -105,7 +105,7 @@ public class NotificationService {
         }
     }
 
-    @Async("notificationExecutor")
+    @Async("taskExecutor")
     public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         try {
             String url = processorUrl + "/api/stream-topic";
@@ -127,7 +127,7 @@ public class NotificationService {
         }
     }
 
-    @Async("notificationExecutor")
+    @Async("taskExecutor")
     public void requestStreamHotNotification(StreamEvent streamEvent) {
         try {
             String url = processorUrl + "/api/stream-hot";

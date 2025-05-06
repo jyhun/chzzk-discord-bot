@@ -12,7 +12,10 @@ import java.util.Optional;
 
 public interface StreamerRepository extends JpaRepository<Streamer, Long> {
     Optional<Streamer> findByChannelId(String channelId);
-    List<Streamer> findAllByChannelIdIn(Collection<String> channelIds);
+    @Query("SELECT s FROM Streamer s " +
+            "JOIN FETCH s.streamSessions " +
+            "WHERE s.channelId IN :channelIds")
+    List<Streamer> findAllByChannelIdInWithFetchJoin(@Param("channelIds") Collection<String> channelIds);
     @Modifying
     @Query("UPDATE Streamer s SET s.live = false WHERE s.channelId IN :ids")
     int markOffline(@Param("ids") Collection<String> ids);

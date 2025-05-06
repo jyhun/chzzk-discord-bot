@@ -57,7 +57,7 @@ public class StreamerService {
 
     @Transactional(readOnly = true)
     public List<Streamer> findAllByChannelIdIn(Collection<String> channelIds) {
-        return streamerRepository.findAllByChannelIdIn(channelIds);
+        return streamerRepository.findAllByChannelIdInWithFetchJoin(channelIds);
     }
 
     public void markOffline(Set<String> endIds) {

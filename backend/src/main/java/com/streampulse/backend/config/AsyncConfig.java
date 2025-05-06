@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.Arrays;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
 @EnableAsync(proxyTargetClass = true)
@@ -17,26 +19,50 @@ import java.util.concurrent.Executor;
 @Slf4j
 public class AsyncConfig implements AsyncConfigurer {
 
-    @Bean(name = "notificationExecutor")
-    public ThreadPoolTaskExecutor notificationExecutor() {
+    @Bean(name = "taskExecutor")
+    public ThreadPoolTaskExecutor taskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(20);
         executor.setMaxPoolSize(50);
         executor.setQueueCapacity(500);
-        executor.setThreadNamePrefix("notification-");
+        executor.setThreadNamePrefix("task-");
+        executor.setKeepAliveSeconds(300);
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
+
+        new Thread(() -> {
+            while (true) {
+                try {
+                    Thread.sleep(60000);
+                    adjustThreadPoolSize(executor);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }).start();
+
         return executor;
+    }
+
+    private void adjustThreadPoolSize(ThreadPoolTaskExecutor executor) {
+        int queueSize = executor.getThreadPoolExecutor().getQueue().size();
+        int corePoolSize = executor.getCorePoolSize();
+
+        if (queueSize > 100) {
+            executor.setCorePoolSize(Math.min(corePoolSize + 10, 50));
+        } else {
+            executor.setCorePoolSize(Math.max(corePoolSize - 5, 20));
+        }
     }
 
     @Override
     public Executor getAsyncExecutor() {
-        return notificationExecutor();
+        return taskExecutor();
     }
 
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (throwable, method, params) ->
-                log.error("Async error in {} with params {}", method.getName(), params, throwable);
+                log.error("Async 작업에서 오류 발생: " + method.getName() + " 매개변수: " + Arrays.toString(params), throwable);
     }
-
 }

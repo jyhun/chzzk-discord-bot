@@ -4,6 +4,9 @@ import com.streampulse.backend.common.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
@@ -26,6 +29,10 @@ public class Streamer extends BaseTimeEntity {
 
     @Column(nullable = false)
     private int averageViewerCount;
+
+    @OneToMany(mappedBy = "streamer", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<StreamSession> streamSessions = new ArrayList<>();
 
     public void updateLive(boolean live) {
         this.live = live;

@@ -63,7 +63,7 @@ public class ChatService {
         }
     }
 
-    @Async("notificationExecutor")
+    @Async("taskExecutor")
     @LogExecution
     public void collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
