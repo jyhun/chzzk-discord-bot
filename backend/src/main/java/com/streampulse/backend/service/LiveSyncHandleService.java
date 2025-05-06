@@ -38,7 +38,7 @@ public class LiveSyncHandleService {
     private final ObjectMapper objectMapper;
     private final RedisLiveStore redisLiveStore;
 
-    private static final int CHUNK_SIZE = 50;
+    private static final int CHUNK_SIZE = 20;
 
     @Transactional(isolation = Isolation.READ_COMMITTED, propagation = Propagation.REQUIRES_NEW)
     public void handleStart(Set<String> startIds, Map<String, LiveResponseDTO> dtoMap, AtomicBoolean firstRun) {
@@ -68,8 +68,9 @@ public class LiveSyncHandleService {
                     streamerService.saveStreamersInChunks(newStreamers, CHUNK_SIZE);
                     newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
                 } catch (Exception e) {
-                    if (e.getCause() != null && e.getCause().getMessage().contains("Duplicate entry")) {
-                        log.warn("streamer insert 중복 발생, 무시 처리: {}", e.getMessage());
+                    String msg = e.getCause()!=null ? e.getCause().getMessage() : e.getMessage();
+                    if (msg!=null && msg.contains("Duplicate entry")) {
+                        log.warn("streamer insert 중복 발생, 무시 처리: {}", msg);
 
                         List<String> failedIds = newStreamers.stream()
                                 .map(Streamer::getChannelId)
