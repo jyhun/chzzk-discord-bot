@@ -45,6 +45,7 @@ public class StreamerService {
     }
 
     public void updateLiveStatus(Streamer streamer, boolean isLive) {
+        if (streamer == null) return;
         if (streamer.isLive() != isLive) {
             streamer.updateLive(isLive);
             streamerRepository.save(streamer);

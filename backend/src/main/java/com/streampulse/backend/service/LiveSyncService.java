@@ -88,6 +88,10 @@ public class LiveSyncService {
                     .filter(id -> !streamerMap.containsKey(id))
                     .map(id -> {
                         LiveResponseDTO dto = dtoMap.get(id);
+                        if (dto == null) {
+                            log.warn("[handleStart] dtoMap 에 dto 없음 channelId={}", id);
+                            return null;
+                        }
                         return Streamer.builder()
                                 .channelId(dto.getChannelId())
                                 .nickname(dto.getChannelName())
@@ -105,21 +109,30 @@ public class LiveSyncService {
                 savedStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
             }
 
-            startIds.forEach(id -> {
+            for (String id : startIds) {
                 Streamer streamer = streamerMap.get(id);
+                if (streamer == null) {
+                    log.warn("[handleStart] streamerMap 에 없음 channelId={}", id);
+                    continue;
+                }
+
                 streamerService.updateLiveStatus(streamer, true);
 
                 if (!firstRun.get()
                         && streamer.getAverageViewerCount() >= 30
                         && startCheck.isSubscribed(id))
                     notificationService.requestStreamStartNotification(id, streamer.getNickname());
-            });
+            }
 
             List<StreamSession> newSessions = startIds.stream()
                     .filter(streamerMap::containsKey)
                     .map(id -> {
                         Streamer streamer = streamerMap.get(id);
                         LiveResponseDTO dto = dtoMap.get(id);
+                        if (streamer == null || dto == null) {
+                            log.warn("[handleStart] session 생성 스킵 channelId={}, streamer 또는 dto null", id);
+                            return null;
+                        }
                         return StreamSession.builder()
                                 .streamer(streamer)
                                 .title(dto.getLiveTitle())
@@ -133,7 +146,7 @@ public class LiveSyncService {
                 streamSessionService.saveSessionsInChunks(newSessions, CHUNK_SIZE);
             }
         } catch (Exception e) {
-            log.error("handleStart 오류: {}", e.getMessage());
+            log.error("[handleStart] 오류: {}", e.getMessage());
         }
     }
 
@@ -152,11 +165,24 @@ public class LiveSyncService {
                             streamSessionService::existsActiveSessionByChannelId))
                     .map(id -> {
                         LiveResponseDTO dto = dtoMap.get(id);
+                        if (dto == null) {
+                            log.warn("[handleTopic] dto 없음 channelId={}", id);
+                            return null;
+                        }
+
                         Streamer streamer = streamerCache.computeIfAbsent(id, streamerService::findByChannelId);
-                        if (streamer == null) return null;
+                        if (streamer == null) {
+                            log.warn("[handleTopic] streamer 없음 channelId={}", id);
+                            return null;
+                        }
+
                         StreamSession session = sessionCache.computeIfAbsent(id,
                                 k -> streamSessionService.getActiveSession(streamer));
-                        if (session == null) return null;
+                        if (session == null) {
+                            log.warn("[handleTopic] session 없음 channelId={}", id);
+                            return null;
+                        }
+
                         String currJson = jsonCache.computeIfAbsent(id, k -> serialize(dto));
                         String prevJson = redisLiveStore.getSnapshot(session.getId());
                         if (!currJson.equals(prevJson)) {
@@ -178,7 +204,7 @@ public class LiveSyncService {
 
             streamMetricsService.saveMetricsInChunks(inputs, CHUNK_SIZE);
         } catch (Exception e) {
-            log.error("handleTopic 오류: {}", e.getMessage());
+            log.error("[handleTopic] 오류: {}", e.getMessage());
         }
     }
 
@@ -219,9 +245,13 @@ public class LiveSyncService {
                 streamSessionService.saveSessionsInChunks(endedSessions, CHUNK_SIZE);
             }
 
-            endedSessions.forEach(session -> {
+            for (StreamSession session : endedSessions) {
                 Streamer streamer = session.getStreamer();
-                if (streamer == null) return;
+                if (streamer == null) {
+                    log.warn("[handleEnd] session 에 연결된 streamer null sessionId={}", session.getId());
+                    continue;
+                }
+
                 String id = streamer.getChannelId();
                 List<StreamMetricsCacheDTO> metrics = metricsCache.getOrDefault(session.getId(), Collections.emptyList());
                 IntSummaryStatistics stats = metrics.stream()
@@ -232,7 +262,7 @@ public class LiveSyncService {
                 if (endCheck.isSubscribed(id) && streamer.getAverageViewerCount() >= 30) {
                     notificationService.requestStreamEndNotification(streamer, session, avgViewer, peakViewer);
                 }
-            });
+            }
         } catch (Exception e) {
             log.error("handleEnd 오류: {}", e.getMessage());
         }

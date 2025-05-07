@@ -13,7 +13,7 @@ public class ScanScheduler {
 
     private final SchedulerService schedulerService;
 
-    @Scheduled(initialDelay = 0, fixedDelay = 10 * 60 * 1000 * 6)
+    @Scheduled(fixedDelay = 10 * 60 * 1000 * 6)
     public void deepScan() {
         log.info("deepScan 시작");
         schedulerService.doDeepScan();
@@ -21,6 +21,7 @@ public class ScanScheduler {
 
     @Scheduled(cron = "0 * * * * *")
     public void fastScan() {
+        log.info("fastScan 시작");
         schedulerService.doFastScan();
     }
 }
