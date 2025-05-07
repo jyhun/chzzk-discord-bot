@@ -99,31 +99,12 @@ public class LiveSyncService {
                     .toList();
 
             if (!newStreamers.isEmpty()) {
-                try {
-                    streamerService.saveStreamersInChunks(newStreamers, CHUNK_SIZE);
-                    newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
-                } catch (Exception e) {
-                    String msg = e.getCause()!=null ? e.getCause().getMessage() : e.getMessage();
-                    if (msg!=null && msg.contains("Duplicate entry")) {
-                        log.warn("streamer insert 중복 발생, 무시 처리: {}", msg);
-
-                        List<String> failedIds = newStreamers.stream()
-                                .map(Streamer::getChannelId)
-                                .toList();
-                        streamerService.findAllByChannelIdIn(new HashSet<>(failedIds))
-                                .forEach(s -> streamerMap.put(s.getChannelId(), s));
-                    } else {
-                        throw e;
-                    }
-                }
+                streamerService.saveStreamersWithUpsertChunks(newStreamers, CHUNK_SIZE);
+                newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
             }
 
             startIds.forEach(id -> {
                 Streamer streamer = streamerMap.get(id);
-                if (streamer == null) {
-                    log.warn("streamerMap 에 없는 id 발견: {}", id);
-                    return;
-                }
                 streamerService.updateLiveStatus(streamer, true);
 
                 if (!firstRun.get()

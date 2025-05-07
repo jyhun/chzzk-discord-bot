@@ -73,4 +73,11 @@ public class StreamerService {
         }
     }
 
+    public void saveStreamersWithUpsertChunks(List<Streamer> streamers, int chunkSize) {
+        for (int i = 0; i < streamers.size(); i += chunkSize) {
+            List<Streamer> chunk = streamers.subList(i, Math.min(i + chunkSize, streamers.size()));
+            chunkService.upsertStreamersChunk(chunk);
+        }
+    }
+
 }

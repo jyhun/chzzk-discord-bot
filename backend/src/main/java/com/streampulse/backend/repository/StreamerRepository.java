@@ -24,4 +24,22 @@ public interface StreamerRepository extends JpaRepository<Streamer, Long> {
 
     @Query("SELECT s.channelId FROM Streamer s WHERE s.channelId IN :ids AND s.live = true")
     List<String> findLiveChannelIds(@Param("ids") Collection<String> ids);
+
+    @Modifying
+    @Query(value = """
+        INSERT INTO streamer (channel_id, nickname, average_viewer_count, live, created_at, updated_at)
+        VALUES (:channelId, :nickname, :averageViewerCount, :live, NOW(), NOW())
+        ON DUPLICATE KEY UPDATE
+            nickname = VALUES(nickname),
+            average_viewer_count = VALUES(average_viewer_count),
+            live = VALUES(live),
+            updated_at = NOW()
+        """, nativeQuery = true)
+    void upsertStreamer(
+            @Param("channelId") String channelId,
+            @Param("nickname") String nickname,
+            @Param("averageViewerCount") int averageViewerCount,
+            @Param("live") boolean live
+    );
+
 }
