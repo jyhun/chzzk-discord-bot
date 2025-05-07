@@ -19,7 +19,7 @@ public class ScanScheduler {
         schedulerService.doDeepScan();
     }
 
-    @Scheduled(fixedRate = 60 * 1000)
+    @Scheduled(cron = "0 * * * * *")
     public void fastScan() {
         schedulerService.doFastScan();
     }
