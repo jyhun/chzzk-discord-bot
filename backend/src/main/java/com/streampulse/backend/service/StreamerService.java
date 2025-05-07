@@ -7,6 +7,7 @@ import com.streampulse.backend.repository.StreamerRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
@@ -54,9 +55,9 @@ public class StreamerService {
         }
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public List<Streamer> findAllByChannelIdIn(Collection<String> channelIds) {
-        return streamerRepository.findAllByChannelIdInWithFetchJoin(channelIds);
+        return streamerRepository.findAllByChannelIdIn(channelIds);
     }
 
     public void markOffline(Set<String> endIds) {

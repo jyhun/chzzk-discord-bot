@@ -51,4 +51,9 @@ public interface StreamSessionRepository extends JpaRepository<StreamSession, Lo
     @Query("UPDATE StreamSession s SET s.endedAt = :endedAt WHERE s.id IN :ids AND s.endedAt IS NULL")
     int bulkUpdateEndedAt(@Param("ids") List<Long> ids, @Param("endedAt") LocalDateTime endedAt);
 
+
+    @Query("SELECT s FROM StreamSession s WHERE s.streamer.channelId IN :channelIds AND s.endedAt IS NULL")
+    List<StreamSession> findAllByStreamerChannelIds(@Param("channelIds") Collection<String> channelIds);
+
+
 }

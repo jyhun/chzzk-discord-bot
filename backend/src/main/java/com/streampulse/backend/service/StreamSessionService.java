@@ -10,12 +10,14 @@ import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @Transactional
@@ -75,7 +77,7 @@ public class StreamSessionService {
     @Transactional
     public void bulkEndSessions(List<Long> sessionIds, LocalDateTime endAt) {
         if (sessionIds.isEmpty()) return;
-        streamSessionRepository.bulkUpdateEndedAt(sessionIds, LocalDateTime.now());
+        streamSessionRepository.bulkUpdateEndedAt(sessionIds, endAt);
         entityManager.flush();
         entityManager.clear();
     }
@@ -83,5 +85,10 @@ public class StreamSessionService {
     @Transactional(readOnly = true)
     public List<StreamSession> findByIds(List<Long> ids) {
         return streamSessionRepository.findAllById(ids);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
+    public List<StreamSession> findAllByStreamerIds(Set<String> startIds) {
+        return streamSessionRepository.findAllByStreamerChannelIds(startIds);
     }
 }

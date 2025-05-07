@@ -12,13 +12,14 @@ spring:
       hibernate.order_inserts: true
       hibernate.order_updates: true
       hibernate.generate_statistics: false
-      javax:
-        persistence:
-          schema-generation:
-            scripts:
-              action: create
-              create-target: create.sql
-            database.action: none
+      hibernate.connection.isolation: 2
+  #      javax:
+#        persistence:
+#          schema-generation:
+#            scripts:
+#              action: create
+#              create-target: create.sql
+#            database.action: none
 
   data:
     redis:
@@ -33,7 +34,7 @@ app:
     batch-size: 1000     # 페이지당 처리할 데이터 개수
     cron: "0 * * * * *" # 크론 표현식
 
-  viewer-threshold: 100
+  viewer-threshold: 1000
 
 logging:
   level:

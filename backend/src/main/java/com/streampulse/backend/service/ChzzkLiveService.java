@@ -104,7 +104,7 @@ public class ChzzkLiveService {
             return;
         }
 
-        if (indexToCursor.size() < 10) {
+        if (indexToCursor.size() < 3) {
             log.warn("수집된 커서가 너무 적어 저장하지 않습니다. count={}", indexToCursor.size());
             return;
         }

@@ -15,7 +15,7 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
-      hibernate.jdbc.batch_size: 100
+      hibernate.jdbc.batch_size: 10
       hibernate.order_inserts: true
       hibernate.order_updates: true
       hibernate.generate_statistics: false
