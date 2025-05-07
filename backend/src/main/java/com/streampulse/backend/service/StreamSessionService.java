@@ -9,10 +9,10 @@ import lombok.RequiredArgsConstructor;
 import org.hibernate.Hibernate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
@@ -71,8 +71,14 @@ public class StreamSessionService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void updateSessionEndedAt(StreamSession session) {
-        session.updateEndedAt();
+    @Transactional
+    public void bulkEndSessions(List<Long> sessionIds) {
+        if (sessionIds.isEmpty()) return;
+        streamSessionRepository.bulkUpdateEndedAt(sessionIds, LocalDateTime.now());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StreamSession> findByIds(List<Long> ids) {
+        return streamSessionRepository.findAllById(ids);
     }
 }

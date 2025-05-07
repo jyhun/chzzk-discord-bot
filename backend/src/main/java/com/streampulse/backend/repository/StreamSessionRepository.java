@@ -47,4 +47,8 @@ public interface StreamSessionRepository extends JpaRepository<StreamSession, Lo
     int bulkUpdateSessionStats(@Param("sessionIds") List<Long> sessionIds, @Param("threshold") LocalDateTime threshold);
 
 
+    @Modifying
+    @Query("UPDATE StreamSession s SET s.endedAt = :endedAt WHERE s.id IN :ids AND s.endedAt IS NULL")
+    int bulkUpdateEndedAt(@Param("ids") List<Long> ids, @Param("endedAt") LocalDateTime endedAt);
+
 }

@@ -1,7 +1,6 @@
 package com.streampulse.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.StreamerCacheDTO;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.repository.StreamerRepository;
@@ -45,7 +44,6 @@ public class StreamerService {
         return streamer;
     }
 
-    @LogExecution
     public void updateLiveStatus(Streamer streamer, boolean isLive) {
         if (streamer.isLive() != isLive) {
             streamer.updateLive(isLive);
@@ -61,8 +59,12 @@ public class StreamerService {
     }
 
     public void markOffline(Set<String> endIds) {
-        streamerRepository.markOffline(endIds);
-        endIds.forEach(id -> redisTemplate.delete(STREAMER_KEY + id));
+        if (endIds.isEmpty()) return;
+        List<String> idsToUpdate = streamerRepository.findLiveChannelIds(endIds);
+        if (!idsToUpdate.isEmpty()) {
+            streamerRepository.markOffline(idsToUpdate);
+            idsToUpdate.forEach(id -> redisTemplate.delete(STREAMER_KEY + id));
+        }
     }
 
     public void saveStreamersInChunks(List<Streamer> streamers, int chunkSize) {

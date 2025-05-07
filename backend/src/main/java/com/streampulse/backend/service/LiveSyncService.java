@@ -40,7 +40,7 @@ public class LiveSyncService {
     private final RedisLiveStore redisLiveStore;
     private final ChzzkLiveService chzzkLiveService;
 
-    private static final int CHUNK_SIZE = 50;
+    private static final int CHUNK_SIZE = 100;
     private final AtomicBoolean firstRun = new AtomicBoolean(true);
 
     @LogExecution
@@ -215,11 +215,15 @@ public class LiveSyncService {
                     .filter(session -> session.getEndedAt() == null)
                     .toList();
 
-            for (StreamSession session : sessionsToEnd) {
-                streamSessionService.updateSessionEndedAt(session);
+            if (!sessionsToEnd.isEmpty()) {
+                streamSessionService.bulkEndSessions(sessionsToEnd.stream().map(StreamSession::getId).toList());
             }
 
-            for (StreamSession session : sessionsToEnd) {
+            List<StreamSession> endedSessions = streamSessionService.findByIds(
+                    sessionsToEnd.stream().map(StreamSession::getId).toList()
+            );
+
+            for (StreamSession session : endedSessions) {
                 List<StreamMetricsCacheDTO> metrics = streamMetricsService.findByStreamSessionId(session.getId());
                 metricsCache.put(session.getId(), metrics);
 
@@ -233,11 +237,11 @@ public class LiveSyncService {
                 }
             }
 
-            if (!sessionsToEnd.isEmpty()) {
-                streamSessionService.saveSessionsInChunks(sessionsToEnd, CHUNK_SIZE);
+            if (!endedSessions.isEmpty()) {
+                streamSessionService.saveSessionsInChunks(endedSessions, CHUNK_SIZE);
             }
 
-            sessionsToEnd.forEach(session -> {
+            endedSessions.forEach(session -> {
                 Streamer streamer = session.getStreamer();
                 if (streamer == null) return;
                 String id = streamer.getChannelId();
