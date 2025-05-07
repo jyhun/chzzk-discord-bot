@@ -99,7 +99,10 @@ public class LiveSyncService {
 
             if (!newStreamers.isEmpty()) {
                 streamerService.saveStreamersWithUpsertChunks(newStreamers, CHUNK_SIZE);
-                newStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
+
+                List<Streamer> savedStreamers = streamerService.findAllByChannelIdIn(startIds);
+                streamerMap.clear();
+                savedStreamers.forEach(streamer -> streamerMap.put(streamer.getChannelId(), streamer));
             }
 
             startIds.forEach(id -> {
