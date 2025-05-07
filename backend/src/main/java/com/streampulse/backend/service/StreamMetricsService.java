@@ -1,12 +1,11 @@
 package com.streampulse.backend.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.streampulse.backend.dto.StreamMetricsInputDTO;
 import com.streampulse.backend.dto.StreamMetricsCacheDTO;
+import com.streampulse.backend.dto.StreamMetricsInputDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.repository.StreamMetricsRepository;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Hibernate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +39,6 @@ public class StreamMetricsService {
                     .category(input.getDto().getLiveCategoryValue())
                     .title(input.getDto().getLiveTitle())
                     .build();
-            metrics.addTags(input.getDto().getTags());
             batch.add(metrics);
 
             if (metrics.getViewerCount() >= 1000
@@ -72,7 +70,6 @@ public class StreamMetricsService {
         }
 
         List<StreamMetrics> metrics = streamMetricsRepository.findByStreamSessionId(sessionId);
-        metrics.forEach(m -> Hibernate.initialize(m.getTags()));
 
         List<StreamMetricsCacheDTO> dtoList = metrics.stream()
                 .map(StreamMetricsCacheDTO::fromEntity)

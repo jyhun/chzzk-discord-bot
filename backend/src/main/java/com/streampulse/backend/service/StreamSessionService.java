@@ -6,7 +6,6 @@ import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.repository.StreamSessionRepository;
 import lombok.RequiredArgsConstructor;
-import org.hibernate.Hibernate;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,7 +38,6 @@ public class StreamSessionService {
         }
         StreamSession session = streamSessionRepository.findFirstByStreamer_ChannelIdAndEndedAtIsNullOrderByStartedAtDesc(streamer.getChannelId())
                 .orElseThrow(() -> new IllegalArgumentException("방송중인 방송 세션을 찾을 수 없습니다."));
-        Hibernate.initialize(session.getTags());
 
         redisTemplate.opsForValue().set(sessionKey, StreamSessionCacheDTO.fromEntity(session), SESSION_TTL);
         return session;
@@ -60,9 +58,7 @@ public class StreamSessionService {
 
     @Transactional(readOnly = true)
     public List<StreamSession> findAllByStreamerIn(Collection<Streamer> streamers) {
-        List<StreamSession> sessions = streamSessionRepository.findAllByStreamerIn(streamers);
-        sessions.forEach(s -> Hibernate.initialize(s.getTags()));
-        return sessions;
+        return streamSessionRepository.findAllByStreamerIn(streamers);
     }
 
     public void saveSessionsInChunks(List<StreamSession> sessions, int chunkSize) {

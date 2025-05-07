@@ -9,7 +9,6 @@ import com.streampulse.backend.dto.StreamMetricsInputDTO;
 import com.streampulse.backend.dto.SubscriptionCheckDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
-import com.streampulse.backend.entity.Tag;
 import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.infra.RedisLiveStore;
 import jakarta.annotation.PostConstruct;
@@ -207,15 +206,6 @@ public class LiveSyncService {
             for (StreamSession session : endedSessions) {
                 List<StreamMetricsCacheDTO> metrics = streamMetricsService.findByStreamSessionId(session.getId());
                 metricsCache.put(session.getId(), metrics);
-
-                if (!metrics.isEmpty()) {
-                    List<Tag> tagList = new ArrayList<>();
-                    List<String> tags = metrics.get(metrics.size() - 1).getTags();
-                    for (String tag : tags) {
-                        tagList.add(Tag.builder().streamSession(session).value(tag).build());
-                    }
-                    session.addTags(tagList);
-                }
             }
 
             if (!endedSessions.isEmpty()) {

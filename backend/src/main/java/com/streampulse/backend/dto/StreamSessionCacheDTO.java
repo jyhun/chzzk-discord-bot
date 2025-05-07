@@ -2,15 +2,12 @@ package com.streampulse.backend.dto;
 
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
-import com.streampulse.backend.entity.Tag;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Getter
 @AllArgsConstructor
@@ -26,7 +23,6 @@ public class StreamSessionCacheDTO {
     private LocalDateTime endedAt;
     private int averageViewerCount;
     private int peakViewerCount;
-    private List<String> tags;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -40,9 +36,6 @@ public class StreamSessionCacheDTO {
                 .endedAt(session.getEndedAt())
                 .averageViewerCount(session.getAverageViewerCount())
                 .peakViewerCount(session.getPeakViewerCount())
-                .tags(session.getTags().stream()
-                        .map(Tag::getValue)
-                        .collect(Collectors.toList()))
                 .createdAt(session.getCreatedAt())
                 .updatedAt(session.getUpdatedAt())
                 .build();
@@ -59,13 +52,6 @@ public class StreamSessionCacheDTO {
                 .averageViewerCount(averageViewerCount)
                 .peakViewerCount(peakViewerCount)
                 .build();
-
-        if (tags != null && !tags.isEmpty()) {
-            List<Tag> tagEntities = tags.stream()
-                    .map(tagValue -> Tag.builder().streamSession(session).value(tagValue).build())
-                    .collect(Collectors.toList());
-            session.addTags(tagEntities);
-        }
 
         return session;
     }
