@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.RejectedExecutionException;
 
 @Service
 @Transactional
@@ -64,6 +65,8 @@ public class NotificationService {
             payload.put("streamerName", streamerName);
             restTemplate.postForEntity(url, payload, Void.class);
             log.info("[Notification] START 알림 전송 성공: {}", channelId);
+        } catch (RejectedExecutionException e) {
+            log.warn("[Notification] START 알림이 taskExecutor 큐 초과로 거부됨: {}", channelId);
         } catch (Exception e) {
             log.warn("[Notification] START 알림 전송 실패: {}", channelId, e);
         }
@@ -100,6 +103,8 @@ public class NotificationService {
 
             restTemplate.postForEntity(url, payload, Void.class);
             log.info("[Notification] END 알림 전송 성공: {}", channelId);
+        } catch (RejectedExecutionException e) {
+            log.warn("[Notification] END 알림이 taskExecutor 큐 초과로 거부됨: {}", streamer.getChannelId());
         } catch (Exception e) {
             log.warn("[Notification] END 알림 전송 실패: {}", streamer.getChannelId(), e);
         }
@@ -122,6 +127,8 @@ public class NotificationService {
 
             restTemplate.postForEntity(url, payload, Void.class);
             log.info("[Notification] TOPIC 알림 전송 성공: {}", streamerChannelId);
+        } catch (RejectedExecutionException e) {
+            log.warn("[Notification] TOPIC 알림 거부됨 (taskExecutor 큐 초과): {}", streamerChannelId);
         } catch (Exception e) {
             log.warn("[Notification] TOPIC 알림 전송 실패: {}", streamerChannelId, e);
         }
@@ -187,6 +194,8 @@ public class NotificationService {
             // 전송
             restTemplate.postForEntity(url, payload, Void.class);
             log.info("[Notification] HOT 알림 전송 성공: {}", channelId);
+        } catch (RejectedExecutionException e) {
+            log.warn("[Notification] HOT 알림 거부됨 (taskExecutor 큐 초과): {}", streamEvent.getStreamMetrics().getStreamSession().getStreamer().getChannelId());
         } catch (Exception e) {
             log.warn("[Notification] HOT 알림 전송 실패: {}", streamEvent.getStreamMetrics().getStreamSession().getStreamer().getChannelId(), e);
         }
