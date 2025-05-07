@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -70,14 +73,16 @@ public class ChunkService {
 
         StringBuilder sql = new StringBuilder();
         sql.append("""
-            INSERT INTO streamer (channel_id, nickname, average_viewer_count, live)
-            VALUES 
-        """);
+                    INSERT INTO streamer (channel_id, nickname, average_viewer_count, live, created_at, updated_at)
+                    VALUES 
+                """);
 
-        List<Object> params = new java.util.ArrayList<>();
+        List<Object> params = new ArrayList<>();
+        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+
         for (int i = 0; i < chunk.size(); i++) {
             Streamer s = chunk.get(i);
-            sql.append("(?, ?, ?, ?)");
+            sql.append("(?, ?, ?, ?, ?, ?)");
             if (i < chunk.size() - 1) {
                 sql.append(",");
             }
@@ -85,14 +90,17 @@ public class ChunkService {
             params.add(s.getNickname());
             params.add(s.getAverageViewerCount());
             params.add(s.isLive());
+            params.add(now);
+            params.add(now);
         }
 
         sql.append("""
-            ON DUPLICATE KEY UPDATE 
-                nickname = VALUES(nickname), 
-                average_viewer_count = VALUES(average_viewer_count), 
-                live = VALUES(live)
-        """);
+                    ON DUPLICATE KEY UPDATE 
+                        nickname = VALUES(nickname), 
+                        average_viewer_count = VALUES(average_viewer_count), 
+                        live = VALUES(live),
+                        updated_at = VALUES(updated_at)
+                """);
 
         jdbcTemplate.update(sql.toString(), params.toArray());
     }

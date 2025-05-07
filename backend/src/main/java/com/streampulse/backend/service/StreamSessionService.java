@@ -5,6 +5,8 @@ import com.streampulse.backend.dto.StreamSessionCacheDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
 import com.streampulse.backend.repository.StreamSessionRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -24,6 +26,9 @@ public class StreamSessionService {
     private final RedisTemplate<String, Object> redisTemplate;
     private final ChunkService chunkService;
     private final ObjectMapper objectMapper;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private static final Duration SESSION_TTL = Duration.ofMinutes(10);
 
@@ -68,9 +73,11 @@ public class StreamSessionService {
     }
 
     @Transactional
-    public void bulkEndSessions(List<Long> sessionIds) {
+    public void bulkEndSessions(List<Long> sessionIds, LocalDateTime endAt) {
         if (sessionIds.isEmpty()) return;
         streamSessionRepository.bulkUpdateEndedAt(sessionIds, LocalDateTime.now());
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Transactional(readOnly = true)

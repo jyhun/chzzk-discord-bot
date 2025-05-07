@@ -196,7 +196,11 @@ public class LiveSyncService {
                     .toList();
 
             if (!sessionsToEnd.isEmpty()) {
-                streamSessionService.bulkEndSessions(sessionsToEnd.stream().map(StreamSession::getId).toList());
+                LocalDateTime endedAt = LocalDateTime.now();
+                streamSessionService.bulkEndSessions(
+                        sessionsToEnd.stream().map(StreamSession::getId).toList(),
+                        endedAt
+                );
             }
 
             List<StreamSession> endedSessions = streamSessionService.findByIds(
