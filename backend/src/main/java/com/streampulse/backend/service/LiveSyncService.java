@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -82,19 +83,19 @@ public class LiveSyncService {
         String prevJson = redisTemplate.opsForValue().get(redisKey);
 
         if (!currJson.equals(prevJson)) {
-            redisTemplate.opsForValue().set(redisKey, currJson);
+            redisTemplate.opsForValue().set(redisKey, currJson, Duration.ofHours(6));
             return true;
         }
         return false;
     }
 
     private String serialize(LiveResponseDTO dto) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("title", dto.getLiveTitle());
-        map.put("category", dto.getLiveCategory());
-        map.put("tags", dto.getTags() != null ? dto.getTags() : List.of());
         try {
-            return objectMapper.writeValueAsString(map);
+            return objectMapper.writeValueAsString(Map.of(
+                    "title", Optional.ofNullable(dto.getLiveTitle()).orElse(""),
+                    "category", Optional.ofNullable(dto.getLiveCategory()).orElse(""),
+                    "tags", dto.getTags() != null ? dto.getTags() : List.of()
+            ));
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

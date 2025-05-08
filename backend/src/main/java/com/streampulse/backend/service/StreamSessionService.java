@@ -26,52 +26,53 @@ public class StreamSessionService {
     private final StreamMetricsRepository streamMetricsRepository;
 
     public StreamSession getOrCreateSession(Streamer streamer, LiveResponseDTO dto) {
-        if (!streamer.isLive()) {
-            StreamSession session = StreamSession.builder()
-                    .streamer(streamer)
-                    .title(dto.getLiveTitle())
-                    .category(dto.getLiveCategoryValue())
-                    .startedAt(LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                    .build();
-            return streamSessionRepository.save(session);
-        }
         return streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
-                .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));
+                .orElseGet(() -> streamSessionRepository.save(
+                        StreamSession.builder()
+                                .streamer(streamer)
+                                .title(dto.getLiveTitle())
+                                .category(dto.getLiveCategoryValue())
+                                .startedAt(LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                                .build()
+                ));
     }
 
 
     @LogExecution
     public StreamSession handleStreamEnd(Streamer streamer) {
-        StreamSession streamSession = streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
-                .orElseThrow(() -> new IllegalArgumentException("방송 세션을 찾을 수 없습니다."));
-        streamSession.updateEndedAt();
+        return streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
+                .map(streamSession -> {
+                    streamSession.updateEndedAt();
 
-        List<StreamMetrics> streamMetricsList = streamMetricsRepository.findByStreamSessionId(streamSession.getId());
+                    List<StreamMetrics> streamMetricsList = streamMetricsRepository.findByStreamSessionId(streamSession.getId());
 
-        int sessionAvgViewer = (int) streamMetricsList.stream()
-                .mapToInt(StreamMetrics::getViewerCount)
-                .average()
-                .orElse(0.0);
+                    int sessionAvgViewer = (int) streamMetricsList.stream()
+                            .mapToInt(StreamMetrics::getViewerCount)
+                            .average()
+                            .orElse(0.0);
 
-        streamSession.updateAverageViewerCount(sessionAvgViewer);
+                    streamSession.updateAverageViewerCount(sessionAvgViewer);
 
-        int sessionPeakViewer = streamMetricsList.stream()
-                .mapToInt(StreamMetrics::getViewerCount)
-                .max()
-                .orElse(0);
+                    int sessionPeakViewer = streamMetricsList.stream()
+                            .mapToInt(StreamMetrics::getViewerCount)
+                            .max()
+                            .orElse(0);
 
-        streamSession.updatePeakViewerCount(sessionPeakViewer);
+                    streamSession.updatePeakViewerCount(sessionPeakViewer);
 
+                    List<StreamSession> streamSessionList = streamSessionRepository.findByStreamerId(streamer.getId());
+                    int streamerAvgViewer = (int) streamSessionList.stream()
+                            .mapToInt(StreamSession::getAverageViewerCount)
+                            .average()
+                            .orElse(0.0);
 
-        List<StreamSession> streamSessionList = streamSessionRepository.findByStreamerId(streamer.getId());
-        int streamerAvgViewer = (int) streamSessionList.stream()
-                .mapToInt(StreamSession::getAverageViewerCount)
-                .average()
-                .orElse(0.0);
+                    streamer.updateAverageViewerCount(streamerAvgViewer);
+                    streamerRepository.save(streamer);
 
-        streamer.updateAverageViewerCount(streamerAvgViewer);
-        streamerRepository.save(streamer);
-
-        return streamSessionRepository.save(streamSession);
+                    return streamSessionRepository.save(streamSession);
+                })
+                .orElseGet(() -> {
+                    return null;
+                });
     }
 }

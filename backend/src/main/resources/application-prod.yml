@@ -26,7 +26,7 @@ spring:
       password: ${REDIS_PASSWORD}
 
 app:
-  viewer-threshold: 10
+  viewer-threshold: 1
 
 logging:
   level:
