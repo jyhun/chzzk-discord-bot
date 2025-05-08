@@ -7,7 +7,7 @@ import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,19 +20,14 @@ public class StreamEventService {
 
     private final StreamEventRepository streamEventRepository;
     private final SubscriptionService subscriptionService;
-    private final StringRedisTemplate redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
     private final ApplicationEventPublisher applicationEventPublisher;
-
-    private static final String STREAM_EVENT_KEY = "hot:";
-    private static final Duration STREAM_EVENT_TTL = Duration.ofDays(1);
 
     @LogExecution
     public void saveStreamEvent(StreamMetrics metrics, Integer averageViewerCount) {
         String sessionId = metrics.getStreamSession().getId().toString();
 
-        String cacheKey = STREAM_EVENT_KEY + sessionId;
-
-        if (redisTemplate.hasKey(cacheKey)) {
+        if (redisTemplate.hasKey(sessionId)) {
             return;
         }
 
@@ -49,7 +44,7 @@ public class StreamEventService {
 
         streamEvent = streamEventRepository.save(streamEvent);
 
-        redisTemplate.opsForValue().set(sessionId, "HOT", STREAM_EVENT_TTL);
+        redisTemplate.opsForValue().set(sessionId, "HOT", Duration.ofDays(1));
 
         if (!subscriptionService.hasSubscribersFor(EventType.HOT, metrics.getStreamSession().getStreamer().getChannelId())) {
             return;

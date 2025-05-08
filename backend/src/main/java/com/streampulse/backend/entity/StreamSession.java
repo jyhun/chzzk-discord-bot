@@ -23,10 +23,6 @@ public class StreamSession extends BaseTimeEntity {
     @JoinColumn(name = "streamer_id", nullable = false)
     private Streamer streamer;
 
-    @OneToMany(mappedBy = "streamSession", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Builder.Default
-    private List<StreamMetrics> metrics = new ArrayList<>();
-
     @Column(nullable = false)
     private String title;
 
@@ -42,10 +38,33 @@ public class StreamSession extends BaseTimeEntity {
 
     private int peakViewerCount;
 
+    @OneToMany(mappedBy = "streamSession", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<Tag> tags = new ArrayList<>();
+
+    public void addTag(Tag tag) {
+        tags.add(tag);
+        tag.assignStreamSession(this);
+    }
+
+    public void addTags(List<Tag> tagList) {
+        if(tagList != null) {
+            tagList.forEach(this::addTag);
+        }
+    }
+
     public void updateEndedAt() {
         if (endedAt == null) {
             this.endedAt = LocalDateTime.now();
         }
+    }
+
+    public void updateAverageViewerCount(int averageViewerCount) {
+        this.averageViewerCount = averageViewerCount;
+    }
+
+    public void updatePeakViewerCount(int peakViewerCount) {
+        this.peakViewerCount = peakViewerCount;
     }
 
 }

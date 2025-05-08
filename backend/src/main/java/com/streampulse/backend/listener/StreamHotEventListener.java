@@ -18,7 +18,7 @@ public class StreamHotEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onHotCreated(Long streamEventId) {
         StreamEvent streamEvent = streamEventRepository.findById(streamEventId)
-                .orElseThrow(() -> new IllegalArgumentException("StreamEvent 찾을수 없습니다: " + streamEventId));
+                .orElseThrow(() -> new IllegalArgumentException("StreamEvent 찾을수 없습니다."));
         chatService.collectChatsForStreamEvent(streamEvent);
     }
 }

@@ -1,20 +1,17 @@
 package com.streampulse.backend.infra;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Component
 @RequiredArgsConstructor
 public class RedisCursorStore {
 
-    private final StringRedisTemplate redisTemplate;
+    private final RedisTemplate<String, String> redisTemplate;
 
     public void saveZSet(String key, Map<Integer, String> indexToCursor) {
         redisTemplate.delete(key);

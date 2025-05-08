@@ -6,8 +6,8 @@ spring:
     hikari:
       connection-timeout: 30000 # 커넥션 타임아웃 30초
       initialization-fail-timeout: -1 # 초기화 실패 시 무한 대기
-      maximum-pool-size: 100 # 커넥션 풀 사이즈
-      minimum-idle: 30 # 최소 아이들 커넥션
+      maximum-pool-size: 10 # 커넥션 풀 사이즈, 기본 10
+      minimum-idle: 2 # 최소 아이들 커넥션
       idle-timeout: 300000 # idle 커넥션 유지 시간 (5분)
       max-lifetime: 1800000 # 커넥션 최대 수명 (30분)
 
@@ -15,10 +15,6 @@ spring:
     hibernate:
       ddl-auto: validate
     properties:
-      hibernate.jdbc.batch_size: 10
-      hibernate.order_inserts: true
-      hibernate.order_updates: true
-      hibernate.generate_statistics: false
       hibernate:
         show_sql: false
         format_sql: false
@@ -28,14 +24,6 @@ spring:
       host: redis
       port: 6379
       password: ${REDIS_PASSWORD}
-
-app:
-  scheduler:
-    retention-days: 7   # 세션/스트리머 집계 시 기준이 되는 지난 날 수
-    batch-size: 1000     # 페이지당 처리할 데이터 개수
-    cron: "0 0 12 * * *" # 크론 표현식
-
-  viewer-threshold: 10
 
 logging:
   level:

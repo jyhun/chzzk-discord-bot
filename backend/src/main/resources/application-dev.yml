@@ -8,40 +8,22 @@ spring:
     hibernate:
       ddl-auto: create
     properties:
-      hibernate.jdbc.batch_size: 50
-      hibernate.order_inserts: true
-      hibernate.order_updates: true
-      hibernate.generate_statistics: false
-      hibernate.connection.isolation: 2
-  #      javax:
+      hibernate:
+        show_sql: false
+        format_sql: false
+#      javax:
 #        persistence:
 #          schema-generation:
 #            scripts:
 #              action: create
 #              create-target: create.sql
-#            database.action: none
-
-  data:
-    redis:
-      host: localhost
-#      host: redis
-      port: 6379
-      password: ${REDIS_PASSWORD}
-
-app:
-  scheduler:
-    retention-days: 7   # 세션/스트리머 집계 시 기준이 되는 지난 날 수
-    batch-size: 1000     # 페이지당 처리할 데이터 개수
-    cron: "0 * * * * *" # 크론 표현식
-
-  viewer-threshold: 1000
 
 logging:
   level:
     root: info
     org.hibernate.SQL: info
-    org.hibernate.type.descriptor.sql.BasicBinder: info
-    org.hibernate.orm.jdbc.bind: info
+    org.hibernate.type.descriptor.sql.BasicBinder: trace
+    org.hibernate.orm.jdbc.bind: trace
 
 management:
   endpoints:
@@ -51,4 +33,3 @@ management:
 
 processor:
   url: ${PROCESSOR_BASE_URL}
-
