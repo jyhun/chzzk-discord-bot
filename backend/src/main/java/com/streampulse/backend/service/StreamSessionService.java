@@ -55,9 +55,6 @@ public class StreamSessionService {
 
         streamSession.updateAverageViewerCount(sessionAvgViewer);
 
-        StreamMetrics streamMetrics = streamMetricsList.get(streamMetricsList.size() - 1);
-        streamSession.addTags(streamMetrics.getTags());
-
         int sessionPeakViewer = streamMetricsList.stream()
                 .mapToInt(StreamMetrics::getViewerCount)
                 .max()

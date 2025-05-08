@@ -11,12 +11,23 @@ spring:
       hibernate:
         show_sql: false
         format_sql: false
-#      javax:
+  #      javax:
 #        persistence:
 #          schema-generation:
 #            scripts:
 #              action: create
 #              create-target: create.sql
+#            database.action: none
+
+  data:
+    redis:
+      host: localhost
+      #      host: redis
+      port: 6379
+      password: ${REDIS_PASSWORD}
+
+app:
+  viewer-threshold: 100
 
 logging:
   level:

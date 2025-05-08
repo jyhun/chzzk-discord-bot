@@ -23,7 +23,6 @@ public class StreamMetricsService {
                 .category(dto.getLiveCategoryValue())
                 .title(dto.getLiveTitle())
                 .build();
-        metrics.addTags(dto.getTags());
         metrics = streamMetricsRepository.save(metrics);
         if(metrics.getViewerCount() >= 1000 && metrics.getViewerCount() > averageViewerCount * 1.5) {
             streamEventService.saveStreamEvent(metrics, averageViewerCount);

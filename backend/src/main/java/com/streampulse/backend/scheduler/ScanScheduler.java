@@ -16,11 +16,20 @@ public class ScanScheduler {
     @Scheduled(initialDelay = 0, fixedDelay = 10 * 60 * 1000 * 6)
     public void deepScan() {
         log.info("deepScan 시작");
-        schedulerService.doDeepScan();
+        try {
+            schedulerService.doDeepScan();
+        } catch (Exception e) {
+            log.error("deepScan 실행 중 오류 발생", e);
+        }
     }
 
-    @Scheduled(fixedRate = 60 * 1000)
+    @Scheduled(cron = "0 * * * * *")
     public void fastScan() {
-        schedulerService.doFastScan();
+        log.info("fastScan 시작");
+        try {
+            schedulerService.doFastScan();
+        } catch (Exception e) {
+            log.error("fastScan 실행 중 오류 발생", e);
+        }
     }
 }

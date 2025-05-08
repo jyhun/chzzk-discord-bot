@@ -63,7 +63,7 @@ public class ChatService {
     }
 
     @LogExecution
-    public StreamEvent collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
+    public void collectChats(String channelId, String streamEventId, ChatMessagesRequestDTO chatMessagesRequestDTO) {
         StreamEvent streamEvent = streamEventRepository.findById(Long.parseLong(streamEventId))
                 .orElseThrow(() -> new IllegalArgumentException("StreamEvent 찾을 수 없습니다."));
 
@@ -133,8 +133,6 @@ public class ChatService {
         }
 
         notificationService.requestStreamHotNotification(streamEvent);
-
-        return streamEvent;
 
     }
 
