@@ -1,19 +1,15 @@
 package com.streampulse.backend.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
-import com.streampulse.backend.entity.StreamSession;
-import com.streampulse.backend.entity.Streamer;
-import com.streampulse.backend.enums.EventType;
+import com.streampulse.backend.infra.RedisLiveStore;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -21,84 +17,40 @@ import java.util.*;
 public class LiveSyncService {
 
     private final ChzzkLiveService chzzkLiveService;
-    private final StreamerService streamerService;
-    private final StreamSessionService streamSessionService;
-    private final StreamMetricsService streamMetricsService;
-    private final NotificationService notificationService;
-    private final SubscriptionService subscriptionService;
-    private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper;
-
-    private static final String REDIS_KEY_PREFIX = "snapshot:";
+    private final RedisLiveStore redisLiveStore;
+    private final LiveHandlerService liveHandlerService;
+    private final AtomicBoolean firstRun = new AtomicBoolean(true);
 
     @LogExecution
     public void syncLiveBroadcasts() {
-        Set<String> liveStreamerIds = new HashSet<>();
-        Set<String> visitedBroadcasterIds = new HashSet<>();
+        List<LiveResponseDTO> liveList = Optional.ofNullable(chzzkLiveService.collectLiveBroadcastersFromRedis())
+                .orElse(Collections.emptyList())
+                .stream()
+                .filter(Objects::nonNull)
+                .filter(dto -> dto.getChannelId() != null)
+                .toList();
+        if (liveList.isEmpty()) return;
 
-        List<LiveResponseDTO> liveList = chzzkLiveService.collectLiveBroadcastersFromRedis();
+        Map<String, LiveResponseDTO> dtoMap = liveList.stream()
+                .collect(Collectors.toMap(LiveResponseDTO::getChannelId, dto -> dto, (e, r) -> e));
 
-        for (LiveResponseDTO dto : liveList) {
-            String channelId = dto.getChannelId();
+        if (dtoMap.isEmpty()) return;
 
-            if (!visitedBroadcasterIds.add(channelId)) continue;
+        Set<String> nextIds = dtoMap.keySet();
+        Set<String> currIds = redisLiveStore.getLiveStreamerIds();
+        Set<String> startIds = new HashSet<>(nextIds);
+        startIds.removeAll(currIds);
+        Set<String> endIds = new HashSet<>(currIds);
+        endIds.removeAll(nextIds);
 
-            liveStreamerIds.add(channelId);
+        redisLiveStore.updateLiveSet(startIds, endIds);
 
-            Streamer streamer = streamerService.getOrCreateStreamer(dto);
-            StreamSession session = streamSessionService.getOrCreateSession(streamer, dto);
+        liveHandlerService.handleStart(startIds, dtoMap, firstRun);
+        liveHandlerService.handleEnd(endIds);
+        liveHandlerService.handleTopic(nextIds, dtoMap, firstRun);
 
-            if (!streamer.isLive()) {
-                streamerService.updateLiveStatus(streamer, true);
+        firstRun.set(false);
 
-                if (streamer.getAverageViewerCount() >= 30) {
-                    if (subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
-                        notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
-                    }
-
-                    if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
-                        subscriptionService.detectTopicEvent(dto);
-                    }
-                }
-            }
-
-            // 변경 사항 있을 경우 알림
-            else if (hasChanged(session.getId(), dto)) {
-                if (subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId) && streamer.getAverageViewerCount() >= 30) {
-                    subscriptionService.detectTopicEvent(dto);
-                }
-            }
-
-            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
-
-        }
-
-        streamerService.markOfflineStreamers(liveStreamerIds);
-    }
-
-    private boolean hasChanged(Long sessionId, LiveResponseDTO dto) {
-        String redisKey = REDIS_KEY_PREFIX + sessionId;
-
-        String currJson = serialize(dto);
-        String prevJson = redisTemplate.opsForValue().get(redisKey);
-
-        if (!currJson.equals(prevJson)) {
-            redisTemplate.opsForValue().set(redisKey, currJson, Duration.ofHours(6));
-            return true;
-        }
-        return false;
-    }
-
-    private String serialize(LiveResponseDTO dto) {
-        try {
-            return objectMapper.writeValueAsString(Map.of(
-                    "title", Optional.ofNullable(dto.getLiveTitle()).orElse(""),
-                    "category", Optional.ofNullable(dto.getLiveCategory()).orElse(""),
-                    "tags", dto.getTags() != null ? dto.getTags() : List.of()
-            ));
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
     }
 
 }

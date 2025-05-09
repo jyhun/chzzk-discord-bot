@@ -37,7 +37,6 @@ public class StreamSessionService {
                 ));
     }
 
-
     @LogExecution
     public StreamSession handleStreamEnd(Streamer streamer) {
         return streamSessionRepository.findByStreamer_ChannelIdAndEndedAtIsNull(streamer.getChannelId())
@@ -71,8 +70,6 @@ public class StreamSessionService {
 
                     return streamSessionRepository.save(streamSession);
                 })
-                .orElseGet(() -> {
-                    return null;
-                });
+                .orElse(null);
     }
 }
