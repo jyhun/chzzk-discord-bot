@@ -2,6 +2,7 @@ package com.streampulse.backend.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamSession;
 import com.streampulse.backend.entity.Streamer;
@@ -29,6 +30,7 @@ public class LiveHandlerService {
     private final StreamSessionService streamSessionService;
     private final RedisLiveStore redisLiveStore;
 
+    @LogExecution
     public void handleStart(Set<String> startIds, Map<String, LiveResponseDTO> dtoMap, AtomicBoolean firstRun) {
         if (startIds.isEmpty()) return;
 
@@ -48,6 +50,7 @@ public class LiveHandlerService {
         }
     }
 
+    @LogExecution
     public void handleEnd(Set<String> endIds) {
         if (endIds.isEmpty()) return;
 
@@ -58,6 +61,10 @@ public class LiveHandlerService {
             Streamer streamer = optStreamer.get();
             streamerService.updateLiveStatus(streamer, false);
             StreamSession session = streamSessionService.handleStreamEnd(streamer);
+            if(session == null) {
+                log.warn("session null, sessionId = {}", streamer.getChannelId());
+                continue;
+            }
 
             if (streamer.getAverageViewerCount() >= 30
                     && subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
@@ -66,6 +73,7 @@ public class LiveHandlerService {
         }
     }
 
+    @LogExecution
     public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap, AtomicBoolean firstRun) {
         if (nextIds.isEmpty()) return;
 

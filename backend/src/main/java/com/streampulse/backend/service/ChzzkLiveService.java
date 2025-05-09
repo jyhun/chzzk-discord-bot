@@ -41,28 +41,34 @@ public class ChzzkLiveService {
         }
     }
 
-    public void fetchAndStoreValidCursors() {
+    public boolean fetchAndStoreValidCursors() {
         boolean finished;
         int maxRetries = 5;
         int retries = 0;
+
         Map<Integer, String> indexToCursor;
+        Map<String, Set<String>> cursorToBroadcasterIds;
+
         do {
             retries++;
             indexToCursor = new LinkedHashMap<>();
+            cursorToBroadcasterIds = new LinkedHashMap<>();
+
             Set<String> failed = new HashSet<>();
             Set<String> visited = new HashSet<>();
+            Set<String> seenCursors = new HashSet<>();
             finished = false;
 
             Node current = new Node(NO_CURSOR, null, 0);
             visited.add(NO_CURSOR);
+            seenCursors.add(NO_CURSOR);
 
             while (true) {
                 String cur = current.cursor;
-                // 1) API 호출
                 ChzzkRootResponseDTO resp = chzzkOpenApiClient.fetchPage(cur);
 
-                // 2) 실패 시: handleInvalidNext로 백트랙
                 if (resp == null || resp.getContent() == null) {
+                    log.warn("API 응답 실패 or Content 없음: cursor='{}'", cur);
                     failed.add(cur);
                     Node back = handleInvalidNext(current, cur, visited, failed);
                     if (back == null) break;
@@ -71,49 +77,77 @@ public class ChzzkLiveService {
                 }
 
                 List<LiveResponseDTO> data = resp.getContent().getData();
-                // 3) 데이터 비었으면 종료
                 if (data.isEmpty()) break;
 
-                // 4) 성공한 커서 저장
-                indexToCursor.put(current.pageIndex, cur);
+                Set<String> currIds = data.stream()
+                        .map(LiveResponseDTO::getChannelId)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
 
-                // 5) 종료 조건: 마지막 뷰어 수
-                int lastCount = data.get(data.size() - 1).getConcurrentUserCount();
+                // 커서별 방송자 목록 출력
+                log.info("[커서 응답] pageIndex={} cursor='{}' 방송자 수={} → {}",
+                        current.pageIndex, cur, currIds.size(), String.join(", ", currIds));
+
+                // 중복 응답 여부 검사
+                boolean isDuplicate = cursorToBroadcasterIds.values().stream()
+                        .anyMatch(prevIds -> {
+                            long overlap = currIds.stream().filter(prevIds::contains).count();
+                            double ratio = (double) overlap / currIds.size();
+                            return ratio >= 0.8;
+                        });
+
+                if (isDuplicate) {
+                    log.warn("[중복 커서 응답 감지] pageIndex={}, cursor='{}'는 이전 커서들과 80% 이상 응답이 동일하여 제외됩니다",
+                            current.pageIndex, cur);
+                    return false;
+                }
+
+                indexToCursor.put(current.pageIndex, cur);
+                seenCursors.add(cur);
+                cursorToBroadcasterIds.put(cur, currIds);
+
+                LiveResponseDTO lastDTO = data.get(data.size() - 1);
+                int lastCount = lastDTO.getConcurrentUserCount();
                 if (lastCount < VIEWER_THRESHOLD) {
                     finished = true;
                     break;
                 }
 
                 String next = resp.getContent().getPage().getNext();
-                // 6) 중복/실패 커서 처리
-                if (failed.contains(next) || visited.contains(next)) {
+                if (failed.contains(next) || visited.contains(next) || seenCursors.contains(next)) {
+                    log.warn("커서 중복 또는 오류로 제외됨: {}", next);
                     Node back = handleInvalidNext(current, next, visited, failed);
                     if (back == null) break;
                     current = back;
                     continue;
                 }
 
-                // 7) 다음으로 전진
                 visited.add(next);
+                seenCursors.add(next);
                 current = new Node(next, current, current.pageIndex + 1);
             }
+
         } while (!finished && retries < maxRetries);
 
-        if(!finished) {
+        if (!finished) {
             log.warn("Threshold에 도달하지 못해 커서 저장을 건너뜁니다.");
-            return;
+            return false;
         }
 
         if (indexToCursor.size() < 3) {
             log.warn("수집된 커서가 너무 적어 저장하지 않습니다. count={}", indexToCursor.size());
-            return;
+            return false;
         }
 
-        log.info("[DeepScan] 저장된 커서 개수 = {}", indexToCursor.size());
+        Set<String> allBroadcasters = cursorToBroadcasterIds.values().stream()
+                .flatMap(Set::stream).collect(Collectors.toSet());
+
+        log.info("[DeepScan] 저장된 커서 개수 = {}, 전체 방송자 수 = {}", indexToCursor.size(), allBroadcasters.size());
         redisCursorStore.saveZSet(NEXT_KEY, indexToCursor);
         redisCursorStore.rename(NEXT_KEY, CURRENT_KEY);
 
+        return true;
     }
+
 
     public List<LiveResponseDTO> collectLiveBroadcastersFromRedis() {
         return redisCursorStore.loadZSet(CURRENT_KEY)
