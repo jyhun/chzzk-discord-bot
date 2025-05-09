@@ -56,19 +56,16 @@ public class ChzzkLiveService {
 
             Set<String> failed = new HashSet<>();
             Set<String> visited = new HashSet<>();
-            Set<String> seenCursors = new HashSet<>();
             finished = false;
 
             Node current = new Node(NO_CURSOR, null, 0);
             visited.add(NO_CURSOR);
-            seenCursors.add(NO_CURSOR);
 
             while (true) {
                 String cur = current.cursor;
                 ChzzkRootResponseDTO resp = chzzkOpenApiClient.fetchPage(cur);
 
                 if (resp == null || resp.getContent() == null) {
-                    log.warn("API 응답 실패 or Content 없음: cursor='{}'", cur);
                     failed.add(cur);
                     Node back = handleInvalidNext(current, cur, visited, failed);
                     if (back == null) break;
@@ -83,26 +80,48 @@ public class ChzzkLiveService {
                         .map(LiveResponseDTO::getChannelId)
                         .collect(Collectors.toCollection(LinkedHashSet::new));
 
-                // 커서별 방송자 목록 출력
                 log.info("[커서 응답] pageIndex={} cursor='{}' 방송자 수={} → {}",
                         current.pageIndex, cur, currIds.size(), String.join(", ", currIds));
 
-                // 중복 응답 여부 검사
-                boolean isDuplicate = cursorToBroadcasterIds.values().stream()
+                // 중복 응답 검사
+                Map<Integer, String> finalIndexToCursor = indexToCursor;
+                Node finalCurrent = current;
+                boolean isDuplicate = cursorToBroadcasterIds.entrySet().stream()
+                        .filter(e -> {
+                            String prevCursor = e.getKey();
+                            if (prevCursor.equals(cur)) return false;
+
+                            int prevIndex = finalIndexToCursor.entrySet().stream()
+                                    .filter(en -> en.getValue().equals(prevCursor))
+                                    .map(Map.Entry::getKey)
+                                    .findFirst().orElse(-1);
+
+                            return prevIndex != finalCurrent.pageIndex;
+                        })
+                        .map(Map.Entry::getValue)
                         .anyMatch(prevIds -> {
                             long overlap = currIds.stream().filter(prevIds::contains).count();
-                            double ratio = (double) overlap / currIds.size();
-                            return ratio >= 0.8;
+                            return (double) overlap / currIds.size() >= 0.8;
                         });
 
                 if (isDuplicate) {
-                    log.warn("[중복 커서 응답 감지] pageIndex={}, cursor='{}'는 이전 커서들과 80% 이상 응답이 동일하여 제외됩니다",
-                            current.pageIndex, cur);
-                    return false;
+                    log.warn("[중복 응답 감지] pageIndex={}, cursor='{}' 제외", current.pageIndex, cur);
+
+                    String next = resp.getContent().getPage().getNext();
+                    if (next == null || failed.contains(next) || visited.contains(next)) {
+                        log.warn("중복 감지 후 다음 커서가 유효하지 않음 → 백트랙");
+                        Node back = handleInvalidNext(current, next, visited, failed);
+                        if (back == null) break;
+                        current = back;
+                        continue;
+                    }
+
+                    visited.add(next);
+                    current = new Node(next, current, current.pageIndex + 1);
+                    continue;
                 }
 
                 indexToCursor.put(current.pageIndex, cur);
-                seenCursors.add(cur);
                 cursorToBroadcasterIds.put(cur, currIds);
 
                 LiveResponseDTO lastDTO = data.get(data.size() - 1);
@@ -113,7 +132,7 @@ public class ChzzkLiveService {
                 }
 
                 String next = resp.getContent().getPage().getNext();
-                if (failed.contains(next) || visited.contains(next) || seenCursors.contains(next)) {
+                if (failed.contains(next) || visited.contains(next)) {
                     log.warn("커서 중복 또는 오류로 제외됨: {}", next);
                     Node back = handleInvalidNext(current, next, visited, failed);
                     if (back == null) break;
@@ -122,7 +141,6 @@ public class ChzzkLiveService {
                 }
 
                 visited.add(next);
-                seenCursors.add(next);
                 current = new Node(next, current, current.pageIndex + 1);
             }
 
@@ -147,7 +165,6 @@ public class ChzzkLiveService {
 
         return true;
     }
-
 
     public List<LiveResponseDTO> collectLiveBroadcastersFromRedis() {
         return redisCursorStore.loadZSet(CURRENT_KEY)
