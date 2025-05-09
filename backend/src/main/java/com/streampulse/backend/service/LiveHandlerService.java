@@ -30,6 +30,7 @@ public class LiveHandlerService {
     private final NotificationService notificationService;
     private final SubscriptionService subscriptionService;
     private final StreamerService streamerService;
+    private final StreamMetricsService streamMetricsService;
     private final ObjectMapper objectMapper;
     private final StreamSessionService streamSessionService;
     private final RedisLiveStore redisLiveStore;
@@ -102,6 +103,7 @@ public class LiveHandlerService {
                     subscriptionService.detectTopicEvent(dto);
                 }
             }
+            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
         }
     }
 
