@@ -33,8 +33,8 @@ logging:
   level:
     root: info
     org.hibernate.SQL: info
-    org.hibernate.type.descriptor.sql.BasicBinder: trace
-    org.hibernate.orm.jdbc.bind: trace
+    org.hibernate.type.descriptor.sql.BasicBinder: warn
+    org.hibernate.orm.jdbc.bind: warn
 
 management:
   endpoints:

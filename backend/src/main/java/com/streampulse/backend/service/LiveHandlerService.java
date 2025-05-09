@@ -11,12 +11,16 @@ import com.streampulse.backend.infra.RedisLiveStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +35,7 @@ public class LiveHandlerService {
     private final RedisLiveStore redisLiveStore;
 
     @LogExecution
-    public void handleStart(Set<String> startIds, Map<String, LiveResponseDTO> dtoMap, AtomicBoolean firstRun) {
+    public void handleStart(Set<String> startIds, Map<String, LiveResponseDTO> dtoMap) {
         if (startIds.isEmpty()) return;
 
         for (String channelId : startIds) {
@@ -43,25 +47,29 @@ public class LiveHandlerService {
 
             redisLiveStore.saveSnapshot(session.getId(), serialize(dto));
 
-            if (!firstRun.get()
-                    && streamer.getAverageViewerCount() >= 30
+            if (streamer.getAverageViewerCount() >= 30
                     && subscriptionService.hasSubscribersFor(EventType.START, channelId))
                 notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
         }
     }
 
     @LogExecution
-    public void handleEnd(Set<String> endIds) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
+    public void handleEnd(Set<String> endIds, Map<String, LiveResponseDTO> dtoMap) {
         if (endIds.isEmpty()) return;
 
         for (String channelId : endIds) {
+            LiveResponseDTO dto = dtoMap.get(channelId);
+            if (dto == null) continue;
+
             Optional<Streamer> optStreamer = streamerService.findByChannelId(channelId);
             if (optStreamer.isEmpty()) continue;
 
             Streamer streamer = optStreamer.get();
             streamerService.updateLiveStatus(streamer, false);
-            StreamSession session = streamSessionService.handleStreamEnd(streamer);
-            if(session == null) {
+            LocalDateTime startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+            StreamSession session = streamSessionService.handleStreamEnd(streamer, startedAt);
+            if (session == null) {
                 log.warn("session null, sessionId = {}", streamer.getChannelId());
                 continue;
             }
@@ -74,7 +82,7 @@ public class LiveHandlerService {
     }
 
     @LogExecution
-    public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap, AtomicBoolean firstRun) {
+    public void handleTopic(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
         if (nextIds.isEmpty()) return;
 
         for (String channelId : nextIds) {
@@ -89,8 +97,7 @@ public class LiveHandlerService {
 
             if (!currJson.equals(prevJson)) {
                 redisLiveStore.saveSnapshot(session.getId(), currJson);
-                if (!firstRun.get()
-                        && streamer.getAverageViewerCount() >= 30
+                if (streamer.getAverageViewerCount() >= 30
                         && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                     subscriptionService.detectTopicEvent(dto);
                 }

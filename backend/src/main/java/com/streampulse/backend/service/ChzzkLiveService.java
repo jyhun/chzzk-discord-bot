@@ -167,15 +167,18 @@ public class ChzzkLiveService {
     }
 
     public List<LiveResponseDTO> collectLiveBroadcastersFromRedis() {
-        return redisCursorStore.loadZSet(CURRENT_KEY)
+        Map<String, LiveResponseDTO> result = new LinkedHashMap<>();
+
+        redisCursorStore.loadZSet(CURRENT_KEY)
                 .entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
                 .map(chzzkOpenApiClient::fetchPage)
-                .filter(rootResponseDTO -> rootResponseDTO != null && rootResponseDTO.getContent() != null)
-                .flatMap(rootResponseDTO -> rootResponseDTO.getContent().getData().stream())
-                .distinct()
-                .collect(Collectors.toList());
+                .filter(resp -> resp != null && resp.getContent() != null && resp.getContent().getData() != null)
+                .flatMap(resp -> resp.getContent().getData().stream())
+                .forEach(dto -> result.putIfAbsent(dto.getChannelId(), dto));
+
+        return new ArrayList<>(result.values());
     }
 
     private Node handleInvalidNext(Node current, String targetCursor,

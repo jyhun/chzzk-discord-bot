@@ -23,7 +23,7 @@ public class ScanScheduler {
         }
     }
 
-    @Scheduled(cron = "0 * * * * *")
+    @Scheduled(fixedDelay = 30000, initialDelay = 5000)
     public void fastScan() {
         log.info("FastScan 시작");
         try {

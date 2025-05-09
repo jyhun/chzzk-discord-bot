@@ -1,15 +1,14 @@
 package com.streampulse.backend.infra;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.redis.core.RedisOperations;
-import org.springframework.data.redis.core.SessionCallback;
+import org.springframework.data.redis.core.RedisCallback;
+import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.HashSet;
 import java.util.Set;
 
 @Component
@@ -17,12 +16,9 @@ import java.util.Set;
 public class RedisLiveStore {
 
     private final StringRedisTemplate redisTemplate;
-    private static final String LIVE_SET_KEY = "live:set";
     private static final String SNAPSHOT_PREFIX = "snapshot:";
-
-    public Set<String> getLiveStreamerIds() {
-        return Optional.ofNullable(redisTemplate.opsForSet().members(LIVE_SET_KEY)).orElse(Collections.emptySet());
-    }
+    private static final String LIVE_STATIC_PREFIX = "LIVE_STATIC:"; // TTL 없음
+    private static final String LIVE_PREFIX = "LIVE:";               // TTL 있음
 
     public String getSnapshot(Long sessionId) {
         return redisTemplate.opsForValue().get(SNAPSHOT_PREFIX + sessionId);
@@ -32,19 +28,64 @@ public class RedisLiveStore {
         redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + sessionId, value, Duration.ofHours(6));
     }
 
-    public void updateLiveSet(Set<String> add, Set<String> remove) {
-        if (add.isEmpty() && remove.isEmpty()) return;
-        redisTemplate.execute(new SessionCallback<List<Object>>() {
-            @Override
-            public <K, V> List<Object> execute(RedisOperations<K, V> ops) {
-                ops.multi();
-                @SuppressWarnings("unchecked")
-                RedisOperations<String, String> o = (RedisOperations<String, String>) ops;
-                add.forEach(id -> o.opsForSet().add(LIVE_SET_KEY, id));
-                remove.forEach(id -> o.opsForSet().remove(LIVE_SET_KEY, id));
-                return ops.exec();
+    public void updateLiveTtl(String channelId) {
+        redisTemplate.expire(LIVE_PREFIX + channelId, Duration.ofMinutes(2));
+    }
+
+    public void saveLiveKey(String channelId) {
+        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1", Duration.ofMinutes(2));
+    }
+
+    public void setStaticKey(String channelId) {
+        redisTemplate.opsForValue().set(LIVE_STATIC_PREFIX + channelId, "1");
+    }
+
+    /**
+     * LIVE:<channelId> 키를 SCAN으로 안전하게 조회합니다.
+     */
+    public Set<String> getLiveKeys() {
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
+            Set<String> result = new HashSet<>();
+            ScanOptions options = ScanOptions.scanOptions()
+                    .match(LIVE_PREFIX + "*")
+                    .count(1000)
+                    .build();
+            try (var cursor = connection.keyCommands().scan(options)) {
+                while (cursor.hasNext()) {
+                    String fullKey = new String(cursor.next(), StandardCharsets.UTF_8);
+                    result.add(fullKey.substring(LIVE_PREFIX.length()));
+                }
             }
+            return result;
         });
     }
 
+    public Boolean hasLiveKey(String channelId) {
+        return redisTemplate.hasKey(LIVE_PREFIX + channelId);
+    }
+
+    public Set<String> getStaticKeys() {
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
+            Set<String> result = new HashSet<>();
+            ScanOptions options = ScanOptions.scanOptions()
+                    .match(LIVE_STATIC_PREFIX + "*")
+                    .count(1000)
+                    .build();
+            try (var cursor = connection.keyCommands().scan(options)) {
+                while (cursor.hasNext()) {
+                    String fullKey = new String(cursor.next(), StandardCharsets.UTF_8);
+                    result.add(fullKey.substring(LIVE_STATIC_PREFIX.length()));
+                }
+            }
+            return result;
+        });
+    }
+
+    public void deleteStaticKey(String channelId) {
+        redisTemplate.delete(LIVE_STATIC_PREFIX + channelId);
+    }
+
+    public void clearAllStaticKeys() {
+        redisTemplate.delete(LIVE_STATIC_PREFIX + "*");
+    }
 }

@@ -29,6 +29,8 @@ public class LiveSyncService {
                 .filter(Objects::nonNull)
                 .filter(dto -> dto.getChannelId() != null)
                 .toList();
+
+
         if (liveList.isEmpty()) return;
 
         Map<String, LiveResponseDTO> dtoMap = liveList.stream()
@@ -37,17 +39,35 @@ public class LiveSyncService {
         if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
-        Set<String> currIds = redisLiveStore.getLiveStreamerIds();
+        Set<String> currIds = firstRun.get() ? redisLiveStore.getStaticKeys() : redisLiveStore.getLiveKeys();
+
         Set<String> startIds = new HashSet<>(nextIds);
         startIds.removeAll(currIds);
+
         Set<String> endIds = new HashSet<>(currIds);
         endIds.removeAll(nextIds);
 
-        redisLiveStore.updateLiveSet(startIds, endIds);
+        liveHandlerService.handleStart(startIds, dtoMap);
+        liveHandlerService.handleEnd(endIds, dtoMap);
+        liveHandlerService.handleTopic(nextIds, dtoMap);
 
-        liveHandlerService.handleStart(startIds, dtoMap, firstRun);
-        liveHandlerService.handleEnd(endIds);
-        liveHandlerService.handleTopic(nextIds, dtoMap, firstRun);
+        if (firstRun.get()) {
+            redisLiveStore.clearAllStaticKeys();            // 기존 전체 삭제
+            nextIds.forEach(redisLiveStore::setStaticKey);  // 현재 방송중 ID 전부 등록
+        } else {
+            startIds.forEach(redisLiveStore::setStaticKey);
+        }
+
+        endIds.forEach(redisLiveStore::deleteStaticKey);
+
+        // 조건부 TTL 연장 또는 키 생성
+        nextIds.forEach(channelId -> {
+            if (redisLiveStore.hasLiveKey(channelId)) {
+                redisLiveStore.updateLiveTtl(channelId); // TTL만 연장
+            } else {
+                redisLiveStore.saveLiveKey(channelId); // 새로 생성
+            }
+        });
 
         firstRun.set(false);
 

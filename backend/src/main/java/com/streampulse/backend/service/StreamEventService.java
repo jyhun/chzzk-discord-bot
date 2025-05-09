@@ -49,7 +49,7 @@ public class StreamEventService {
 
         streamEvent = streamEventRepository.save(streamEvent);
 
-        redisTemplate.opsForValue().set(sessionId, "HOT", STREAM_EVENT_TTL);
+        redisTemplate.opsForValue().set(cacheKey, "HOT", STREAM_EVENT_TTL);
 
         if (!subscriptionService.hasSubscribersFor(EventType.HOT, metrics.getStreamSession().getStreamer().getChannelId())) {
             return;
