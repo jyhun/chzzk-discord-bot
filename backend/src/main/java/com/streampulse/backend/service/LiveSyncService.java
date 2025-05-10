@@ -50,9 +50,9 @@ public class LiveSyncService {
 
         if (!isFirstRun) {
             liveHandlerService.handleStart(startIds, dtoMap);
+            liveHandlerService.handleEnd(endIds);
+            liveHandlerService.handleTopic(nextIds, dtoMap);
         }
-        liveHandlerService.handleEnd(endIds);
-        liveHandlerService.handleTopic(nextIds, dtoMap);
 
         endIds.forEach(redisLiveStore::deleteStaticKey);
         startIds.forEach(redisLiveStore::setStaticKey);
@@ -64,6 +64,7 @@ public class LiveSyncService {
                 .forEach(redisLiveStore::updateLiveTtl);
 
         endIds.forEach(redisLiveStore::deleteLiveKey);
+        endIds.forEach(redisLiveStore::deleteSnapshot);
     }
 
     @PostConstruct

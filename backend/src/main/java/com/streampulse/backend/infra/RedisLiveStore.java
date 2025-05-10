@@ -25,7 +25,7 @@ public class RedisLiveStore {
     }
 
     public void saveSnapshot(String channelId, String value) {
-        redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + channelId, value, Duration.ofHours(6));
+        redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + channelId, value);
     }
 
     public void deleteSnapshot(String channelId) {
@@ -33,11 +33,11 @@ public class RedisLiveStore {
     }
 
     public void saveLiveKey(String channelId) {
-        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1", Duration.ofMinutes(2));
+        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1", Duration.ofMinutes(5));
     }
 
     public void updateLiveTtl(String channelId) {
-        redisTemplate.expire(LIVE_PREFIX + channelId, Duration.ofMinutes(2));
+        redisTemplate.expire(LIVE_PREFIX + channelId, Duration.ofMinutes(5));
     }
 
     public void deleteLiveKey(String channelId) {
