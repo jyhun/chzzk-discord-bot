@@ -4,23 +4,22 @@ import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.infra.RedisLiveStore;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class LiveSyncService {
 
     private final ChzzkLiveService chzzkLiveService;
     private final RedisLiveStore redisLiveStore;
     private final LiveHandlerService liveHandlerService;
-
-    private final AtomicBoolean firstRun = new AtomicBoolean(true);
 
     @LogExecution
     public void syncLiveBroadcasts() {
@@ -31,42 +30,26 @@ public class LiveSyncService {
                 .filter(dto -> dto.getChannelId() != null)
                 .toList();
 
+        log.info("syncLiveBroadcasts size: {}", liveList.size());
         if (liveList.isEmpty()) return;
 
         Map<String, LiveResponseDTO> dtoMap = liveList.stream()
                 .collect(Collectors.toMap(LiveResponseDTO::getChannelId, dto -> dto, (e, r) -> e));
-        if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
 
-        if (firstRun.compareAndSet(true, false)) {
-            redisLiveStore.clearAllStaticKeys();
-            redisLiveStore.clearAllLiveKeys();
-            nextIds.forEach(redisLiveStore::setStaticKey);
-            nextIds.forEach(redisLiveStore::saveLiveKey);
-            return;
-        }
+        Set<String> prevIds = redisLiveStore.getLiveKeys();
 
-        Set<String> prevIds = redisLiveStore.getStaticKeys();
+        Set<String> endIds = prevIds.stream()
+                .filter(id -> !nextIds.contains(id))
+                .collect(Collectors.toSet());
 
-        Set<String> startIds = new HashSet<>(nextIds);
-        startIds.removeAll(prevIds);
-
-        Set<String> endIds = new HashSet<>(prevIds);
-        endIds.removeAll(nextIds);
-
-        liveHandlerService.handleStart(startIds, dtoMap);
+        liveHandlerService.handleStart(nextIds, dtoMap);
         liveHandlerService.handleEnd(endIds);
         liveHandlerService.handleTopic(nextIds, dtoMap);
 
-        endIds.forEach(redisLiveStore::deleteStaticKey);
-        startIds.forEach(redisLiveStore::setStaticKey);
-        startIds.forEach(redisLiveStore::saveLiveKey);
-        nextIds.stream()
-                .filter(redisLiveStore::hasLiveKey)
-                .forEach(redisLiveStore::updateLiveTtl);
-        endIds.forEach(redisLiveStore::deleteLiveKey);
-        endIds.forEach(redisLiveStore::deleteSnapshot);
+        redisLiveStore.clearAllLiveKeys();
+        nextIds.forEach(redisLiveStore::setLiveKey);
     }
 
 }

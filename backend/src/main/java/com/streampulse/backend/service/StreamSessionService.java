@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @Transactional
@@ -27,18 +28,17 @@ public class StreamSessionService {
     private final StreamerRepository streamerRepository;
     private final StreamMetricsRepository streamMetricsRepository;
 
-    public StreamSession getOrCreateSession(Streamer streamer, LiveResponseDTO dto) {
+    public void createSession(Streamer streamer, LiveResponseDTO dto) {
         LocalDateTime startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-        return streamSessionRepository
-                .findByStreamer_ChannelIdAndStartedAt(streamer.getChannelId(), startedAt)
-                .orElseGet(() -> streamSessionRepository.save(
-                        StreamSession.builder()
-                                .streamer(streamer)
-                                .title(dto.getLiveTitle())
-                                .category(dto.getLiveCategoryValue())
-                                .startedAt(startedAt)
-                                .build()
-                ));
+
+        StreamSession session = StreamSession.builder()
+                .streamer(streamer)
+                .title(dto.getLiveTitle())
+                .category(dto.getLiveCategoryValue())
+                .startedAt(startedAt)
+                .build();
+
+        streamSessionRepository.save(session);
     }
 
     @LogExecution
@@ -75,6 +75,16 @@ public class StreamSessionService {
                     return streamSessionRepository.save(streamSession);
                 })
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<StreamSession> findByStreamerAndStartedAt(Streamer streamer, LocalDateTime startedAt) {
+        return streamSessionRepository.findByStreamerAndStartedAt(streamer, startedAt);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<StreamSession> getActiveSession(Streamer streamer) {
+        return streamSessionRepository.findActiveSessionByStreamer(streamer);
     }
 
 }
