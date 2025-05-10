@@ -1,5 +1,6 @@
 package com.streampulse.backend.service;
 
+import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.entity.StreamMetrics;
 import com.streampulse.backend.entity.StreamSession;
@@ -40,6 +41,7 @@ public class StreamSessionService {
                 ));
     }
 
+    @LogExecution
     public StreamSession handleStreamEnd(Streamer streamer,LocalDateTime startedAt) {
         return streamSessionRepository.findByStreamer_ChannelIdAndStartedAt(streamer.getChannelId(), startedAt)
                 .map(streamSession -> {

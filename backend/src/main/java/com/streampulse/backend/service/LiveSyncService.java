@@ -3,12 +3,12 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.infra.RedisLiveStore;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -19,7 +19,6 @@ public class LiveSyncService {
     private final ChzzkLiveService chzzkLiveService;
     private final RedisLiveStore redisLiveStore;
     private final LiveHandlerService liveHandlerService;
-    private final AtomicBoolean firstRun = new AtomicBoolean(true);
 
     @LogExecution
     public void syncLiveBroadcasts() {
@@ -39,38 +38,38 @@ public class LiveSyncService {
         if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
-        Set<String> currIds = firstRun.get() ? redisLiveStore.getStaticKeys() : redisLiveStore.getLiveKeys();
+        Set<String> prevIds = redisLiveStore.getStaticKeys();
+
+        boolean isFirstRun = prevIds.isEmpty();
 
         Set<String> startIds = new HashSet<>(nextIds);
-        startIds.removeAll(currIds);
+        startIds.removeAll(prevIds);
 
-        Set<String> endIds = new HashSet<>(currIds);
+        Set<String> endIds = new HashSet<>(prevIds);
         endIds.removeAll(nextIds);
 
-        liveHandlerService.handleStart(startIds, dtoMap);
-        liveHandlerService.handleEnd(endIds, dtoMap);
+        if (!isFirstRun) {
+            liveHandlerService.handleStart(startIds, dtoMap);
+        }
+        liveHandlerService.handleEnd(endIds);
         liveHandlerService.handleTopic(nextIds, dtoMap);
 
-        if (firstRun.get()) {
-            redisLiveStore.clearAllStaticKeys();            // 기존 전체 삭제
-            nextIds.forEach(redisLiveStore::setStaticKey);  // 현재 방송중 ID 전부 등록
-        } else {
-            startIds.forEach(redisLiveStore::setStaticKey);
-        }
-
         endIds.forEach(redisLiveStore::deleteStaticKey);
+        startIds.forEach(redisLiveStore::setStaticKey);
 
-        // 조건부 TTL 연장 또는 키 생성
-        nextIds.forEach(channelId -> {
-            if (redisLiveStore.hasLiveKey(channelId)) {
-                redisLiveStore.updateLiveTtl(channelId); // TTL만 연장
-            } else {
-                redisLiveStore.saveLiveKey(channelId); // 새로 생성
-            }
-        });
+        startIds.forEach(redisLiveStore::saveLiveKey);
 
-        firstRun.set(false);
+        nextIds.stream()
+                .filter(redisLiveStore::hasLiveKey)
+                .forEach(redisLiveStore::updateLiveTtl);
 
+        endIds.forEach(redisLiveStore::deleteLiveKey);
+    }
+
+    @PostConstruct
+    public void init() {
+        // 앱 재시작 시 이전 상태 초기화
+        redisLiveStore.clearAllStaticKeys();
     }
 
 }
