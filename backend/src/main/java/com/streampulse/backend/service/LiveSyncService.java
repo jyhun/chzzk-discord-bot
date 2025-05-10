@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 @Service
@@ -20,6 +21,8 @@ public class LiveSyncService {
     private final RedisLiveStore redisLiveStore;
     private final LiveHandlerService liveHandlerService;
 
+    private final AtomicBoolean firstRun = new AtomicBoolean(true);
+
     @LogExecution
     public void syncLiveBroadcasts() {
         List<LiveResponseDTO> liveList = Optional.ofNullable(chzzkLiveService.collectLiveBroadcastersFromRedis())
@@ -29,18 +32,14 @@ public class LiveSyncService {
                 .filter(dto -> dto.getChannelId() != null)
                 .toList();
 
-
         if (liveList.isEmpty()) return;
 
         Map<String, LiveResponseDTO> dtoMap = liveList.stream()
                 .collect(Collectors.toMap(LiveResponseDTO::getChannelId, dto -> dto, (e, r) -> e));
-
         if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
         Set<String> prevIds = redisLiveStore.getStaticKeys();
-
-        boolean isFirstRun = prevIds.isEmpty();
 
         Set<String> startIds = new HashSet<>(nextIds);
         startIds.removeAll(prevIds);
@@ -48,21 +47,26 @@ public class LiveSyncService {
         Set<String> endIds = new HashSet<>(prevIds);
         endIds.removeAll(nextIds);
 
-        if (!isFirstRun) {
-            liveHandlerService.handleStart(startIds, dtoMap);
-            liveHandlerService.handleEnd(endIds);
-            liveHandlerService.handleTopic(nextIds, dtoMap);
+        if (firstRun.get()) {
+            firstRun.set(false);
+            nextIds.forEach(redisLiveStore::setStaticKey);
+            nextIds.forEach(redisLiveStore::saveLiveKey);
+            nextIds.stream()
+                    .filter(redisLiveStore::hasLiveKey)
+                    .forEach(redisLiveStore::updateLiveTtl);
+            return;
         }
+
+        liveHandlerService.handleStart(startIds, dtoMap);
+        liveHandlerService.handleEnd(endIds);
+        liveHandlerService.handleTopic(nextIds, dtoMap);
 
         endIds.forEach(redisLiveStore::deleteStaticKey);
         startIds.forEach(redisLiveStore::setStaticKey);
-
         startIds.forEach(redisLiveStore::saveLiveKey);
-
         nextIds.stream()
                 .filter(redisLiveStore::hasLiveKey)
                 .forEach(redisLiveStore::updateLiveTtl);
-
         endIds.forEach(redisLiveStore::deleteLiveKey);
         endIds.forEach(redisLiveStore::deleteSnapshot);
     }
