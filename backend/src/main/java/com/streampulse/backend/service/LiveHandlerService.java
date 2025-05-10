@@ -43,44 +43,47 @@ public class LiveHandlerService {
         if (nextIds.isEmpty()) return;
 
         for (String channelId : nextIds) {
-            LiveResponseDTO dto = dtoMap.get(channelId);
-            if (dto == null) continue;
-
-            Streamer streamer = streamerService.getOrCreateStreamer(dto);
-
-            LocalDateTime startedAt;
             try {
-                startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            } catch (DateTimeParseException e) {
-                log.warn("[handleStart] startedAt 파싱 실패: {}, channelId={}", dto.getOpenDate(), channelId);
-                continue;
-            }
+                LiveResponseDTO dto = dtoMap.get(channelId);
 
-            Duration delay = Duration.between(startedAt, LocalDateTime.now());
-            if (delay.toMinutes() >= 5) {
-                log.info("[handleStart] 시작 후 {}분 경과 → SKIP, channelId={}", delay.toMinutes(), channelId);
-                continue;
-            }
+                if (dto == null) continue;
 
-            boolean isNew = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt).isEmpty();
-            if (!isNew) {
-                log.info("[handleStart] 세션 중복 감지 → SKIP, channelId={}", channelId);
-                continue;
-            }
+                Streamer streamer = streamerService.getOrCreateStreamer(dto);
 
-            streamSessionService.createSession(streamer, dto);
-            redisLiveStore.saveSnapshot(channelId, serialize(dto));
+                LocalDateTime startedAt;
+                try {
+                    startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                } catch (DateTimeParseException e) {
+                    log.warn("[handleStart] startedAt 파싱 실패: {}, channelId={}", dto.getOpenDate(), channelId);
+                    continue;
+                }
 
-            if (streamer.getAverageViewerCount() >= 30
-                    && subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
-                notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
-            }
+                Duration delay = Duration.between(startedAt, LocalDateTime.now());
+                if (delay.toMinutes() >= 5) {
+                    continue;
+                }
 
-            if (streamer.getAverageViewerCount() >= 30
-                    && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
-                subscriptionService.detectTopicEvent(dto);
+                boolean isNew = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt).isEmpty();
+                if (!isNew) {
+                    continue;
+                }
+
+                streamSessionService.createSession(streamer, dto);
+                redisLiveStore.saveSnapshot(channelId, serialize(dto));
+
+                if (streamer.getAverageViewerCount() >= 30
+                        && subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
+                    notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
+                }
+
+                if (streamer.getAverageViewerCount() >= 30
+                        && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
+                    subscriptionService.detectTopicEvent(dto);
+                }
+                log.info("[handleStart] channelId = {}", channelId);
+            } catch (Exception e) {
+                log.error("[handleStart] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
             }
-            log.info("[handleStart] channelId = {}", channelId);
         }
     }
 
@@ -90,34 +93,38 @@ public class LiveHandlerService {
         if (endIds.isEmpty()) return;
 
         for (String channelId : endIds) {
-            Optional<Streamer> optStreamer = streamerService.findByChannelId(channelId);
-            if (optStreamer.isEmpty()) continue;
-            Streamer streamer = optStreamer.get();
+            try {
+                Optional<Streamer> optStreamer = streamerService.findByChannelId(channelId);
 
-            Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
-            if (sessionOpt.isEmpty()) {
-                log.info("[handleEnd] 활성 세션 없음 → SKIP, channelId={}", channelId);
-                continue;
+                if (optStreamer.isEmpty()) continue;
+                Streamer streamer = optStreamer.get();
+
+                Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
+                if (sessionOpt.isEmpty()) {
+                    continue;
+                }
+                StreamSession session = sessionOpt.get();
+
+                streamerService.updateLiveStatus(streamer, false);
+
+                StreamSession endedSession = streamSessionService.handleStreamEnd(streamer, session.getStartedAt());
+                if (endedSession == null) {
+                    log.warn("[handleEnd] 세션 종료 실패 → SKIP, channelId={}", channelId);
+                    continue;
+                }
+
+                if (streamer.getAverageViewerCount() >= 30
+                        && subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
+                    notificationService.requestStreamEndNotification(streamer, session);
+                }
+
+                log.info("[handleEnd] channelId = {}", channelId);
+                redisLiveStore.deleteSnapshot(channelId);
+                redisLiveStore.deleteLiveKey(channelId);
+            } catch (Exception e) {
+                log.error("[handleEnd] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
+
             }
-            StreamSession session = sessionOpt.get();
-
-            streamerService.updateLiveStatus(streamer, false);
-
-            StreamSession endedSession = streamSessionService.handleStreamEnd(streamer, session.getStartedAt());
-            if (endedSession == null) {
-                log.warn("[handleEnd] 세션 종료 실패 → SKIP, channelId={}", channelId);
-                continue;
-            }
-
-            if (streamer.getAverageViewerCount() >= 30
-                    && subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
-                notificationService.requestStreamEndNotification(streamer, session);
-            }
-
-            log.info("[handleEnd] channelId = {}", channelId);
-            redisLiveStore.deleteSnapshot(channelId);
-            redisLiveStore.deleteLiveKey(channelId);
-
         }
     }
 
@@ -127,28 +134,32 @@ public class LiveHandlerService {
         if (nextIds.isEmpty()) return;
 
         for (String channelId : nextIds) {
-            LiveResponseDTO dto = dtoMap.get(channelId);
-            if (dto == null) continue;
+            try {
+                LiveResponseDTO dto = dtoMap.get(channelId);
 
-            Streamer streamer = streamerService.getOrCreateStreamer(dto);
-            Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
-            if (sessionOpt.isEmpty()) {
-                log.info("[handleTopic] 활성 세션 없음 → SKIP, channelId={}", channelId);
-                continue;
-            }
-            StreamSession session = sessionOpt.get();
+                if (dto == null) continue;
 
-            String currJson = serialize(dto);
-            String prevJson = redisLiveStore.getSnapshot(channelId);
-
-            if (!currJson.equals(prevJson)) {
-                redisLiveStore.saveSnapshot(channelId, currJson);
-                if (streamer.getAverageViewerCount() >= 30
-                        && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
-                    subscriptionService.detectTopicEvent(dto);
+                Streamer streamer = streamerService.getOrCreateStreamer(dto);
+                Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
+                if (sessionOpt.isEmpty()) {
+                    continue;
                 }
+                StreamSession session = sessionOpt.get();
+
+                String currJson = serialize(dto);
+                String prevJson = redisLiveStore.getSnapshot(channelId);
+
+                if (!currJson.equals(prevJson)) {
+                    redisLiveStore.saveSnapshot(channelId, currJson);
+                    if (streamer.getAverageViewerCount() >= 30
+                            && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
+                        subscriptionService.detectTopicEvent(dto);
+                    }
+                }
+                streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
+            } catch (Exception e) {
+                log.error("[handleTopic] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
             }
-            streamMetricsService.saveMetrics(session, dto, streamer.getAverageViewerCount());
         }
     }
 
