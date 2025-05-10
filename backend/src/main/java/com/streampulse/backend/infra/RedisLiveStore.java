@@ -88,4 +88,19 @@ public class RedisLiveStore {
             return null;
         });
     }
+
+    public void clearAllLiveKeys() {
+        redisTemplate.execute((RedisCallback<Void>) connection -> {
+            ScanOptions options = ScanOptions.scanOptions()
+                    .match(LIVE_PREFIX + "*")
+                    .count(1000)
+                    .build();
+            try (var cursor = connection.keyCommands().scan(options)) {
+                while (cursor.hasNext()) {
+                    connection.keyCommands().del(cursor.next());
+                }
+            }
+            return null;
+        });
+    }
 }

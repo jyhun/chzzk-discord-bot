@@ -3,7 +3,6 @@ package com.streampulse.backend.service;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.infra.RedisLiveStore;
-import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +38,15 @@ public class LiveSyncService {
         if (dtoMap.isEmpty()) return;
 
         Set<String> nextIds = dtoMap.keySet();
+
+        if (firstRun.compareAndSet(true, false)) {
+            redisLiveStore.clearAllStaticKeys();
+            redisLiveStore.clearAllLiveKeys();
+            nextIds.forEach(redisLiveStore::setStaticKey);
+            nextIds.forEach(redisLiveStore::saveLiveKey);
+            return;
+        }
+
         Set<String> prevIds = redisLiveStore.getStaticKeys();
 
         Set<String> startIds = new HashSet<>(nextIds);
@@ -46,16 +54,6 @@ public class LiveSyncService {
 
         Set<String> endIds = new HashSet<>(prevIds);
         endIds.removeAll(nextIds);
-
-        if (firstRun.get()) {
-            firstRun.set(false);
-            nextIds.forEach(redisLiveStore::setStaticKey);
-            nextIds.forEach(redisLiveStore::saveLiveKey);
-            nextIds.stream()
-                    .filter(redisLiveStore::hasLiveKey)
-                    .forEach(redisLiveStore::updateLiveTtl);
-            return;
-        }
 
         liveHandlerService.handleStart(startIds, dtoMap);
         liveHandlerService.handleEnd(endIds);
@@ -69,12 +67,6 @@ public class LiveSyncService {
                 .forEach(redisLiveStore::updateLiveTtl);
         endIds.forEach(redisLiveStore::deleteLiveKey);
         endIds.forEach(redisLiveStore::deleteSnapshot);
-    }
-
-    @PostConstruct
-    public void init() {
-        // 앱 재시작 시 이전 상태 초기화
-        redisLiveStore.clearAllStaticKeys();
     }
 
 }
