@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,6 +18,7 @@ public class RedisLiveStore {
     private final StringRedisTemplate redisTemplate;
     private static final String SNAPSHOT_PREFIX = "snapshot:";
     private static final String LIVE_PREFIX = "LIVE:";
+    private static final String STATIC_PREFIX = "LIVE_STATIC:";
 
     public String getSnapshot(String channelId) {
         return redisTemplate.opsForValue().get(SNAPSHOT_PREFIX + channelId);
@@ -31,7 +33,7 @@ public class RedisLiveStore {
     }
 
     public void setLiveKey(String channelId) {
-        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1");
+        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1", Duration.ofMinutes(3));
     }
 
     public Set<String> getLiveKeys() {
@@ -51,24 +53,29 @@ public class RedisLiveStore {
         });
     }
 
-    public void deleteLiveKey(String channelId) {
-        redisTemplate.delete(LIVE_PREFIX + channelId);
+    public void setStaticKey(String channelId) {
+        redisTemplate.opsForValue().set(STATIC_PREFIX + channelId, "1");
     }
 
-    // 앱 재시작 또는 전체 초기화 시 staticKeys 일괄 삭제
-    public void clearAllLiveKeys() {
-        redisTemplate.execute((RedisCallback<Void>) connection -> {
+    public Set<String> getStaticKeys() {
+        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
+            Set<String> result = new HashSet<>();
             ScanOptions options = ScanOptions.scanOptions()
-                    .match(LIVE_PREFIX + "*")
+                    .match(STATIC_PREFIX + "*")
                     .count(1000)
                     .build();
             try (var cursor = connection.keyCommands().scan(options)) {
                 while (cursor.hasNext()) {
-                    connection.keyCommands().del(cursor.next());
+                    String fullKey = new String(cursor.next(), StandardCharsets.UTF_8);
+                    result.add(fullKey.substring(STATIC_PREFIX.length()));
                 }
             }
-            return null;
+            return result;
         });
+    }
+
+    public void deleteStaticKey(String channelId) {
+        redisTemplate.delete(STATIC_PREFIX + channelId);
     }
 
 }

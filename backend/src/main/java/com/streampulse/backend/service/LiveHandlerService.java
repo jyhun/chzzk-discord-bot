@@ -47,9 +47,6 @@ public class LiveHandlerService {
 
                 Streamer streamer = streamerService.getOrCreateStreamer(dto);
 
-                streamSessionService.getAllUnendedSessions(streamer)
-                        .forEach(s -> streamSessionService.handleStreamEnd(streamer, s.getStartedAt()));
-
                 LocalDateTime startedAt;
                 try {
                     startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -60,6 +57,7 @@ public class LiveHandlerService {
 
                 Duration delay = Duration.between(startedAt, LocalDateTime.now());
                 if (delay.toMinutes() >= 5) {
+                    redisLiveStore.setStaticKey(channelId);
                     continue;
                 }
 
@@ -80,6 +78,7 @@ public class LiveHandlerService {
                         && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                     subscriptionService.detectTopicEvent(dto);
                 }
+                redisLiveStore.setStaticKey(channelId);
                 log.info("[handleStart] channelId = {}", channelId);
             } catch (Exception e) {
                 log.error("[handleStart] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
@@ -122,7 +121,7 @@ public class LiveHandlerService {
 
                 streamerService.updateLiveStatus(streamer, false);
                 redisLiveStore.deleteSnapshot(channelId);
-                redisLiveStore.deleteLiveKey(channelId);
+                redisLiveStore.deleteStaticKey(channelId);
             } catch (Exception e) {
                 log.error("[handleEnd] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
 

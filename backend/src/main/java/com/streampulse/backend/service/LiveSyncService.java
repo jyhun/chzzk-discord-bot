@@ -38,17 +38,16 @@ public class LiveSyncService {
 
         Set<String> nextIds = dtoMap.keySet();
 
-        Set<String> prevIds = redisLiveStore.getLiveKeys();
+        Set<String> staticPrevIds = redisLiveStore.getStaticKeys();
+        Set<String> livePrevIds   = redisLiveStore.getLiveKeys();
 
-        Set<String> endIds = prevIds.stream()
-                .filter(id -> !nextIds.contains(id))
-                .collect(Collectors.toSet());
+        Set<String> endIds = new HashSet<>(staticPrevIds);
+        endIds.removeAll(livePrevIds);
 
         liveHandlerService.handleStart(nextIds, dtoMap);
         liveHandlerService.handleEnd(endIds);
         liveHandlerService.handleTopic(nextIds, dtoMap);
 
-        redisLiveStore.clearAllLiveKeys();
         nextIds.forEach(redisLiveStore::setLiveKey);
     }
 
