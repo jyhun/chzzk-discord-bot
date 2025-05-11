@@ -26,15 +26,29 @@ function createStreamEndRouter(client) {
         `⏱ 총 방송 시간: ${duration}\n` +
         `🔝 최고 시청자 수: ${peakViewerCount}명\n` +
         `👥 평균 시청자 수: ${averageViewerCount}명\n\n` +
-        `https://chzzk.naver.com/live/${streamerId}`;
+        `${streamUrl}`;
 
       for (const s of subscribers) {
         try {
           const channel = await client.channels.fetch(s.discordChannelId);
           await channel.send(message);
           console.info(`[END] ${s.discordChannelId} 전송 성공`);
+
+          await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+            eventType: 'END',
+            receiverId: s.discordChannelId,
+            success: true,
+            message: message
+          });
         } catch (e) {
           console.error(`[END] ${s.discordChannelId} 전송 실패`, e.message);
+
+          await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+            eventType: 'END',
+            receiverId: s.discordChannelId,
+            success: false,
+            message: e.message
+          });
         }
       }
 

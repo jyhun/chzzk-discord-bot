@@ -25,9 +25,25 @@ function createTopicRouter(client) {
       await channel.send(message);
 
       console.info(`[TOPIC] 알림 전송 성공: ${discordChannelId}`);
+
+      await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+        eventType: 'TOPIC',
+        receiverId: discordChannelId,
+        success: true,
+        message: message
+      });
+
       return res.json({ message: '알림 전송 완료' });
     } catch (error) {
       console.error(`[TOPIC] 알림 전송 실패: ${discordChannelId}`, error.message);
+
+      await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+        eventType: 'TOPIC',
+        receiverId: discordChannelId,
+        success: false,
+        message: error.message
+      });
+      
       return res.status(500).json({ error: '알림 전송 실패' });
     }
   });

@@ -11,7 +11,6 @@ function createStreamHotRouter(client) {
 
   router.post('/stream-hot', async (req, res) => {
     const {
-      streamEventId,
       streamerId,
       streamerUrl,
       nickname,
@@ -24,7 +23,7 @@ function createStreamHotRouter(client) {
       viewerIncreaseRate
     } = req.body;
 
-    console.info(`[HOT] 요청 수신: streamEventId=${streamEventId}, streamerId=${streamerId}`);
+    console.info(`[HOT] 요청 수신: streamerId=${streamerId}`);
 
     try {
       // 1. 구독자 목록 조회 (Backend API 호출)
@@ -40,8 +39,6 @@ function createStreamHotRouter(client) {
         return res.json({ message: '구독자가 없습니다.' });
       }
       
-      
-
       // 2. 구독자에게 알림 전송
       for (const subscriber of subscribers) {
         try {
@@ -62,11 +59,10 @@ function createStreamHotRouter(client) {
 
           // 3. 알림 결과 저장 (성공)
           await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
-            streamEventId,
+            eventType: 'HOT',
             receiverId: subscriber.discordChannelId,
             success: true,
-            message: null,
-            errorMessage: null
+            message: message
           });
 
           console.info(`[HOT] 알림 성공: ${subscriber.discordChannelId}`);
@@ -75,11 +71,10 @@ function createStreamHotRouter(client) {
 
           // 3. 알림 결과 저장 (실패)
           await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
-            streamEventId,
+            eventType: 'HOT',
             receiverId: subscriber.discordChannelId,
             success: false,
-            message: null,
-            errorMessage: error.message
+            message: error.message
           });
         }
       }

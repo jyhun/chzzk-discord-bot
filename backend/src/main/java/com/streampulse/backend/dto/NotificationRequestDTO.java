@@ -1,5 +1,6 @@
 package com.streampulse.backend.dto;
 
+import com.streampulse.backend.enums.EventType;
 import lombok.*;
 
 @Getter
@@ -9,9 +10,8 @@ import lombok.*;
 @Builder
 @ToString
 public class NotificationRequestDTO {
-    private Long streamEventId;
+    private EventType eventType;
     private String receiverId;
     private boolean success;
     private String message;
-    private String errorMessage;
 }

@@ -22,8 +22,23 @@ function createStreamStartRouter(client) {
                     const channel = await client.channels.fetch(s.discordChannelId);
                     await channel.send(message);
                     console.info(`[START] ${s.discordChannelId} 전송 성공`);
+
+                
+                    await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+                        eventType: 'START',
+                        receiverId: s.discordChannelId,
+                        success: true,
+                        message: message
+                    });
                 } catch (e) {
                     console.error(`[START] ${s.discordChannelId} 전송 실패`, e.message);
+
+                    await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
+                        eventType: 'START',
+                        receiverId: s.discordChannelId,
+                        success: false,                    
+                        message: e.message
+                    });
                 }
             }
 

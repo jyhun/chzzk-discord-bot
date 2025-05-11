@@ -4,9 +4,7 @@ import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.NotificationRequestDTO;
 import com.streampulse.backend.entity.*;
-import com.streampulse.backend.enums.EventType;
 import com.streampulse.backend.repository.NotificationRepository;
-import com.streampulse.backend.repository.StreamEventRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +28,6 @@ import java.util.Map;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final StreamEventRepository streamEventRepository;
     private final RestTemplate restTemplate;
 
     @Value("${processor.url}")
@@ -38,16 +35,12 @@ public class NotificationService {
 
     @LogExecution
     public void saveNotification(NotificationRequestDTO notificationRequestDTO) {
-        StreamEvent streamEvent = streamEventRepository.findById(notificationRequestDTO.getStreamEventId())
-                .orElseThrow(() -> new IllegalArgumentException("방송 이벤트를 찾을 수 없습니다."));
-
         Notification notification = Notification.builder()
-                .streamEvent(streamEvent)
+                .eventType(notificationRequestDTO.getEventType())
                 .receiverId(notificationRequestDTO.getReceiverId())
                 .success(notificationRequestDTO.isSuccess())
                 .message(notificationRequestDTO.getMessage())
-                .errorMessage(notificationRequestDTO.getErrorMessage())
-                .sentAt(LocalDateTime.now())
+                .sentAt(notificationRequestDTO.isSuccess() ? LocalDateTime.now() : null)
                 .build();
 
         notificationRepository.save(notification);
@@ -104,7 +97,6 @@ public class NotificationService {
         payload.put("streamerId", streamerChannelId);
         payload.put("streamerName", streamerName);
         payload.put("discordChannelId", discordChannelId);
-        payload.put("eventType", EventType.TOPIC.name());
         payload.put("keywords", matchedKeywords);
         payload.put("title", dto.getLiveTitle());
         payload.put("category", dto.getLiveCategoryValue());
@@ -157,7 +149,6 @@ public class NotificationService {
 
         // Payload 구성
         Map<String, Object> payload = new HashMap<>();
-        payload.put("streamEventId", streamEvent.getId());
         payload.put("streamerId", channelId);
         payload.put("streamerUrl", streamerUrl);
         payload.put("nickname", nickname);

@@ -1,6 +1,7 @@
 package com.streampulse.backend.entity;
 
 import com.streampulse.backend.common.BaseTimeEntity;
+import com.streampulse.backend.enums.EventType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -17,9 +18,9 @@ public class Notification extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stream_event_id", nullable = false)
-    private StreamEvent streamEvent;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private EventType eventType;
 
     @Column(nullable = false, length = 100)
     private String receiverId;
@@ -29,9 +30,6 @@ public class Notification extends BaseTimeEntity {
 
     @Column(nullable = false)
     private boolean success;
-
-    @Column(length = 500)
-    private String errorMessage;
 
     private LocalDateTime sentAt;
 
