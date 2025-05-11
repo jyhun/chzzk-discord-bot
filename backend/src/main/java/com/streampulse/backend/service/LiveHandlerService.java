@@ -19,10 +19,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +47,9 @@ public class LiveHandlerService {
 
                 Streamer streamer = streamerService.getOrCreateStreamer(dto);
 
+                streamSessionService.getAllUnendedSessions(streamer)
+                        .forEach(s -> streamSessionService.handleStreamEnd(streamer, s.getStartedAt()));
+
                 LocalDateTime startedAt;
                 try {
                     startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
@@ -63,8 +63,8 @@ public class LiveHandlerService {
                     continue;
                 }
 
-                boolean isNew = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt).isEmpty();
-                if (!isNew) {
+                List<StreamSession> sameStartSessions = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt);
+                if (!sameStartSessions.isEmpty()) {
                     continue;
                 }
 
@@ -95,30 +95,32 @@ public class LiveHandlerService {
         for (String channelId : endIds) {
             try {
                 Optional<Streamer> optStreamer = streamerService.findByChannelId(channelId);
-
                 if (optStreamer.isEmpty()) continue;
                 Streamer streamer = optStreamer.get();
 
-                Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
-                if (sessionOpt.isEmpty()) {
-                    continue;
+                List<StreamSession> activeSessions = streamSessionService.getAllUnendedSessions(streamer);
+                if(activeSessions.isEmpty()) continue;
+
+                activeSessions.sort((a, b) -> b.getStartedAt().compareTo(a.getStartedAt()));
+
+                boolean notified = false;
+                for (StreamSession session : activeSessions) {
+                    StreamSession endedSession = streamSessionService.handleStreamEnd(streamer, session.getStartedAt());
+                    if(endedSession == null) {
+                        log.warn("[handleEnd] 세션 종료 실패 → SKIP, sessionId={}, channelId={}", session.getId(), channelId);
+                        continue;
+                    }
+
+                    if (!notified && streamer.getAverageViewerCount() >= 30 &&
+                            subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
+                        notificationService.requestStreamEndNotification(streamer, session);
+                        notified = true;
+                    }
+
+                    log.info("[handleEnd] 종료 처리 완료 - sessionId={}, channelId={}", session.getId(), channelId);
                 }
-                StreamSession session = sessionOpt.get();
 
                 streamerService.updateLiveStatus(streamer, false);
-
-                StreamSession endedSession = streamSessionService.handleStreamEnd(streamer, session.getStartedAt());
-                if (endedSession == null) {
-                    log.warn("[handleEnd] 세션 종료 실패 → SKIP, channelId={}", channelId);
-                    continue;
-                }
-
-                if (streamer.getAverageViewerCount() >= 30
-                        && subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
-                    notificationService.requestStreamEndNotification(streamer, session);
-                }
-
-                log.info("[handleEnd] channelId = {}", channelId);
                 redisLiveStore.deleteSnapshot(channelId);
                 redisLiveStore.deleteLiveKey(channelId);
             } catch (Exception e) {
@@ -140,11 +142,14 @@ public class LiveHandlerService {
                 if (dto == null) continue;
 
                 Streamer streamer = streamerService.getOrCreateStreamer(dto);
-                Optional<StreamSession> sessionOpt = streamSessionService.getActiveSession(streamer);
-                if (sessionOpt.isEmpty()) {
+                List<StreamSession> activeSessions = streamSessionService.getAllUnendedSessions(streamer);
+                if (activeSessions.isEmpty()) {
                     continue;
                 }
-                StreamSession session = sessionOpt.get();
+
+                StreamSession session = activeSessions.stream()
+                        .max(Comparator.comparing(StreamSession::getStartedAt))
+                        .get();
 
                 String currJson = serialize(dto);
                 String prevJson = redisLiveStore.getSnapshot(channelId);

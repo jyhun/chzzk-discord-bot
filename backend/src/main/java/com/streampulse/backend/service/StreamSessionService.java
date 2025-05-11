@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @Transactional
@@ -77,14 +76,12 @@ public class StreamSessionService {
                 .orElse(null);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<StreamSession> findByStreamerAndStartedAt(Streamer streamer, LocalDateTime startedAt) {
+    public List<StreamSession> findByStreamerAndStartedAt(Streamer streamer, LocalDateTime startedAt) {
         return streamSessionRepository.findByStreamerAndStartedAt(streamer, startedAt);
     }
 
-    @Transactional(readOnly = true)
-    public Optional<StreamSession> getActiveSession(Streamer streamer) {
-        return streamSessionRepository.findActiveSessionByStreamer(streamer);
+    public List<StreamSession> getAllUnendedSessions(Streamer streamer) {
+        return streamSessionRepository.findByStreamerIdAndEndedAtIsNull(streamer.getId());
     }
 
 }
