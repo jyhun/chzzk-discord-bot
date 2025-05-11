@@ -7,7 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -17,8 +17,8 @@ public class RedisLiveStore {
 
     private final StringRedisTemplate redisTemplate;
     private static final String SNAPSHOT_PREFIX = "snapshot:";
-    private static final String LIVE_PREFIX = "LIVE:";
     private static final String STATIC_PREFIX = "LIVE_STATIC:";
+    private static final String LAST_SEEN_PREFIX = "lastSeen:";
 
     public String getSnapshot(String channelId) {
         return redisTemplate.opsForValue().get(SNAPSHOT_PREFIX + channelId);
@@ -30,27 +30,6 @@ public class RedisLiveStore {
 
     public void deleteSnapshot(String channelId) {
         redisTemplate.delete(SNAPSHOT_PREFIX + channelId);
-    }
-
-    public void setLiveKey(String channelId) {
-        redisTemplate.opsForValue().set(LIVE_PREFIX + channelId, "1", Duration.ofMinutes(3));
-    }
-
-    public Set<String> getLiveKeys() {
-        return redisTemplate.execute((RedisCallback<Set<String>>) connection -> {
-            Set<String> result = new HashSet<>();
-            ScanOptions options = ScanOptions.scanOptions()
-                    .match(LIVE_PREFIX + "*")
-                    .count(1000)
-                    .build();
-            try (var cursor = connection.keyCommands().scan(options)) {
-                while (cursor.hasNext()) {
-                    String fullKey = new String(cursor.next(), StandardCharsets.UTF_8);
-                    result.add(fullKey.substring(LIVE_PREFIX.length()));
-                }
-            }
-            return result;
-        });
     }
 
     public void setStaticKey(String channelId) {
@@ -76,6 +55,35 @@ public class RedisLiveStore {
 
     public void deleteStaticKey(String channelId) {
         redisTemplate.delete(STATIC_PREFIX + channelId);
+    }
+
+    /**
+     * 업데이트된 마지막 수집 시각을 Unix epoch seconds 형태로 저장합니다.
+     */
+    public void updateLastSeen(String channelId) {
+        String key = LAST_SEEN_PREFIX + channelId;
+        String now = String.valueOf(Instant.now().getEpochSecond());
+        redisTemplate.opsForValue().set(key, now);
+    }
+
+    /**
+     * 마지막 수집 시각을 반환합니다 (seconds).
+     */
+    public Long getLastSeen(String channelId) {
+        String val = redisTemplate.opsForValue().get(LAST_SEEN_PREFIX + channelId);
+        if (val == null) return null;
+        try {
+            return Long.parseLong(val);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    /**
+     * lastSeen 키를 삭제합니다.
+     */
+    public void deleteLastSeen(String channelId) {
+        redisTemplate.delete(LAST_SEEN_PREFIX + channelId);
     }
 
 }

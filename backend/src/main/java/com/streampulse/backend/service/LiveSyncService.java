@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -21,6 +22,8 @@ public class LiveSyncService {
     private final RedisLiveStore redisLiveStore;
     private final LiveHandlerService liveHandlerService;
 
+    private static final long END_THRESHOLD_SECONDS = 300;
+
     @LogExecution
     public void syncLiveBroadcasts() {
         List<LiveResponseDTO> liveList = Optional.ofNullable(chzzkLiveService.collectLiveBroadcastersFromRedis())
@@ -31,24 +34,33 @@ public class LiveSyncService {
                 .toList();
 
         log.info("syncLiveBroadcasts size: {}", liveList.size());
-        if (liveList.isEmpty()) return;
 
         Map<String, LiveResponseDTO> dtoMap = liveList.stream()
                 .collect(Collectors.toMap(LiveResponseDTO::getChannelId, dto -> dto, (e, r) -> e));
 
         Set<String> nextIds = dtoMap.keySet();
 
+        nextIds.forEach(redisLiveStore::updateLastSeen);
+
         Set<String> staticPrevIds = redisLiveStore.getStaticKeys();
-        Set<String> livePrevIds   = redisLiveStore.getLiveKeys();
 
-        Set<String> endIds = new HashSet<>(staticPrevIds);
-        endIds.removeAll(livePrevIds);
+        long now = Instant.now().getEpochSecond();
+        Set<String> endIds = new HashSet<>();
+        for (String channelId : staticPrevIds) {
+            if(nextIds.contains(channelId)) continue;;
 
-        liveHandlerService.handleStart(nextIds, dtoMap);
+            Long lastSeen = redisLiveStore.getLastSeen(channelId);
+            if(lastSeen == null) continue;
+
+            if (now - lastSeen > END_THRESHOLD_SECONDS) {
+                endIds.add(channelId);
+            }
+        }
+
         liveHandlerService.handleEnd(endIds);
+        liveHandlerService.handleStart(nextIds, dtoMap);
         liveHandlerService.handleTopic(nextIds, dtoMap);
 
-        nextIds.forEach(redisLiveStore::setLiveKey);
     }
 
 }

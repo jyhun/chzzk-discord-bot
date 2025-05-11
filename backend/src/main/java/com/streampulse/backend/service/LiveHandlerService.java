@@ -121,6 +121,7 @@ public class LiveHandlerService {
 
                 streamerService.updateLiveStatus(streamer, false);
                 redisLiveStore.deleteSnapshot(channelId);
+                redisLiveStore.deleteLastSeen(channelId);
                 redisLiveStore.deleteStaticKey(channelId);
             } catch (Exception e) {
                 log.error("[handleEnd] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
