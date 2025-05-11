@@ -22,7 +22,7 @@ public class LiveSyncService {
     private final RedisLiveStore redisLiveStore;
     private final LiveHandlerService liveHandlerService;
 
-    private static final long END_THRESHOLD_SECONDS = 300;
+    private static final long END_THRESHOLD_SECONDS = 600;
 
     @LogExecution
     public void syncLiveBroadcasts() {
