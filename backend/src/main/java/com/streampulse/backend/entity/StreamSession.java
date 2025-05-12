@@ -36,9 +36,15 @@ public class StreamSession extends BaseTimeEntity {
 
     private int peakViewerCount;
 
-    public void updateEndedAt() {
+    public void setEndedAtToNow() {
         if (endedAt == null) {
             this.endedAt = LocalDateTime.now();
+        }
+    }
+
+    public void resetEndedAt() {
+        if (endedAt != null) {
+            this.endedAt = null;
         }
     }
 

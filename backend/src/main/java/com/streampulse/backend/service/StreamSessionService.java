@@ -44,7 +44,7 @@ public class StreamSessionService {
     public StreamSession handleStreamEnd(Streamer streamer,LocalDateTime startedAt) {
         return streamSessionRepository.findByStreamer_ChannelIdAndStartedAt(streamer.getChannelId(), startedAt)
                 .map(streamSession -> {
-                    streamSession.updateEndedAt();
+                    streamSession.setEndedAtToNow();
 
                     List<StreamMetrics> streamMetricsList = streamMetricsRepository.findByStreamSessionId(streamSession.getId());
 

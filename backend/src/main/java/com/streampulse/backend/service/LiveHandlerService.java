@@ -65,7 +65,7 @@ public class LiveHandlerService {
                 if (!sameStartSessions.isEmpty()) {
                     StreamSession existing = sameStartSessions.get(0);
                     if(existing.getEndedAt() != null) {
-                        existing.updateEndedAt();
+                        existing.resetEndedAt();
                         log.info("[handleStart] endedAt 복구 - sessionId={}, channelId={}", existing.getId(), channelId);
                     }
                     continue;
