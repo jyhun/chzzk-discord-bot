@@ -63,18 +63,23 @@ public class LiveHandlerService {
 
                 List<StreamSession> sameStartSessions = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt);
                 if (!sameStartSessions.isEmpty()) {
+                    StreamSession existing = sameStartSessions.get(0);
+                    if(existing.getEndedAt() != null) {
+                        existing.updateEndedAt();
+                        log.info("[handleStart] endedAt 복구 - sessionId={}, channelId={}", existing.getId(), channelId);
+                    }
                     continue;
                 }
 
                 streamSessionService.createSession(streamer, dto);
                 redisLiveStore.saveSnapshot(channelId, serialize(dto));
 
-                if (streamer.getAverageViewerCount() >= 30
+                if (streamer.getAverageViewerCount() >= 1
                         && subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
                     notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
                 }
 
-                if (streamer.getAverageViewerCount() >= 30
+                if (streamer.getAverageViewerCount() >= 1
                         && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                     subscriptionService.detectTopicEvent(dto);
                 }

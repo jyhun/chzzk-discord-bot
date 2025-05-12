@@ -14,9 +14,9 @@ public interface StreamSessionRepository extends JpaRepository<StreamSession, Lo
     Optional<StreamSession> findByStreamer_ChannelIdAndStartedAt(String channelId, LocalDateTime startedAt);
     List<StreamSession> findByStreamerIdAndEndedAtIsNotNull(Long id);
 
-    @Query("SELECT s FROM StreamSession s WHERE s.streamer = :streamer AND s.startedAt = :startedAt")
+    @Query("SELECT s FROM StreamSession s WHERE s.streamer = :streamer AND s.startedAt = :startedAt ORDER BY s.id DESC")
     List<StreamSession> findByStreamerAndStartedAt(@Param("streamer") Streamer streamer,
-                                                       @Param("startedAt") LocalDateTime startedAt);
+                                                   @Param("startedAt") LocalDateTime startedAt);
 
 
     List<StreamSession> findByStreamerIdAndEndedAtIsNull(Long id);
