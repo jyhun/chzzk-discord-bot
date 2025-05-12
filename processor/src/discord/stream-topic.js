@@ -1,4 +1,5 @@
 const express = require('express');
+const axios = require('axios');
 
 function createTopicRouter(client) {
   const router = express.Router();
