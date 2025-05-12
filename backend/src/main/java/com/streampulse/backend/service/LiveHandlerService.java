@@ -34,6 +34,8 @@ public class LiveHandlerService {
     private final StreamSessionService streamSessionService;
     private final RedisLiveStore redisLiveStore;
 
+    private static final int NOTIFY_VIEWER_THRESHOLD = 1;
+
     @LogExecution
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
     public void handleStart(Set<String> nextIds, Map<String, LiveResponseDTO> dtoMap) {
@@ -64,7 +66,7 @@ public class LiveHandlerService {
                 List<StreamSession> sameStartSessions = streamSessionService.findByStreamerAndStartedAt(streamer, startedAt);
                 if (!sameStartSessions.isEmpty()) {
                     StreamSession existing = sameStartSessions.get(0);
-                    if(existing.getEndedAt() != null) {
+                    if (existing.getEndedAt() != null) {
                         existing.resetEndedAt();
                         log.info("[handleStart] endedAt 복구 - sessionId={}, channelId={}", existing.getId(), channelId);
                     }
@@ -74,12 +76,12 @@ public class LiveHandlerService {
                 streamSessionService.createSession(streamer, dto);
                 redisLiveStore.saveSnapshot(channelId, serialize(dto));
 
-                if (streamer.getAverageViewerCount() >= 1
+                if (streamer.getAverageViewerCount() >= NOTIFY_VIEWER_THRESHOLD
                         && subscriptionService.hasSubscribersFor(EventType.START, channelId)) {
                     notificationService.requestStreamStartNotification(channelId, streamer.getNickname());
                 }
 
-                if (streamer.getAverageViewerCount() >= 1
+                if (streamer.getAverageViewerCount() >= NOTIFY_VIEWER_THRESHOLD
                         && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                     subscriptionService.detectTopicEvent(dto);
                 }
@@ -103,20 +105,20 @@ public class LiveHandlerService {
                 Streamer streamer = optStreamer.get();
 
                 List<StreamSession> activeSessions = streamSessionService.getAllUnendedSessions(streamer);
-                if(activeSessions.isEmpty()) continue;
+                if (activeSessions.isEmpty()) continue;
 
                 activeSessions.sort((a, b) -> b.getStartedAt().compareTo(a.getStartedAt()));
 
                 boolean notified = false;
                 for (StreamSession session : activeSessions) {
                     StreamSession endedSession = streamSessionService.handleStreamEnd(streamer, session.getStartedAt());
-                    if(endedSession == null) {
+                    if (endedSession == null) {
                         log.warn("[handleEnd] 세션 종료 실패 → SKIP, sessionId={}, channelId={}", session.getId(), channelId);
                         continue;
                     }
 
-                    if (!notified && streamer.getAverageViewerCount() >= 30 &&
-                            subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
+                    if (!notified && streamer.getAverageViewerCount() >= NOTIFY_VIEWER_THRESHOLD
+                            && subscriptionService.hasSubscribersFor(EventType.END, channelId)) {
                         notificationService.requestStreamEndNotification(streamer, session);
                         notified = true;
                     }
@@ -161,7 +163,7 @@ public class LiveHandlerService {
 
                 if (!currJson.equals(prevJson)) {
                     redisLiveStore.saveSnapshot(channelId, currJson);
-                    if (streamer.getAverageViewerCount() >= 30
+                    if (streamer.getAverageViewerCount() >= NOTIFY_VIEWER_THRESHOLD
                             && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                         subscriptionService.detectTopicEvent(dto);
                     }
