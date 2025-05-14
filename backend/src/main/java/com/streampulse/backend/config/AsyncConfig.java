@@ -38,10 +38,11 @@ public class AsyncConfig implements AsyncConfigurer {
             throw new RejectedExecutionException("taskExecutor 포화: " + r);
         });
 
+        executor.initialize();
+
         // Micrometer에 등록
         ExecutorServiceMetrics.monitor(registry, executor.getThreadPoolExecutor(), "taskExecutor");
 
-        executor.initialize();
         return executor;
     }
 
