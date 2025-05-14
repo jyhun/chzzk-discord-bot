@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
@@ -19,13 +20,14 @@ public class RedisLiveStore {
     private static final String SNAPSHOT_PREFIX = "snapshot:";
     private static final String STATIC_PREFIX = "LIVE_STATIC:";
     private static final String LAST_SEEN_PREFIX = "lastSeen:";
+    private static final Duration TTL_1_HOUR = Duration.ofHours(1);
 
     public String getSnapshot(String channelId) {
         return redisTemplate.opsForValue().get(SNAPSHOT_PREFIX + channelId);
     }
 
     public void saveSnapshot(String channelId, String value) {
-        redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + channelId, value);
+        redisTemplate.opsForValue().set(SNAPSHOT_PREFIX + channelId, value, TTL_1_HOUR);
     }
 
     public void deleteSnapshot(String channelId) {
@@ -33,7 +35,7 @@ public class RedisLiveStore {
     }
 
     public void setStaticKey(String channelId) {
-        redisTemplate.opsForValue().set(STATIC_PREFIX + channelId, "1");
+        redisTemplate.opsForValue().set(STATIC_PREFIX + channelId, "1", TTL_1_HOUR);
     }
 
     public Set<String> getStaticKeys() {
@@ -63,7 +65,7 @@ public class RedisLiveStore {
     public void updateLastSeen(String channelId) {
         String key = LAST_SEEN_PREFIX + channelId;
         String now = String.valueOf(Instant.now().getEpochSecond());
-        redisTemplate.opsForValue().set(key, now);
+        redisTemplate.opsForValue().set(key, now, TTL_1_HOUR);
     }
 
     /**
