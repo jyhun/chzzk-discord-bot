@@ -16,7 +16,9 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -35,6 +37,10 @@ public class LiveHandlerService {
     private final RedisLiveStore redisLiveStore;
 
     private static final int NOTIFY_VIEWER_THRESHOLD = 1;
+    private static final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final ZoneId utc = ZoneId.of("UTC");
+    private static final long maxDelayMin = 60;
+
 
     @LogExecution
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
@@ -42,6 +48,7 @@ public class LiveHandlerService {
         if (nextIds.isEmpty()) return;
 
         for (String channelId : nextIds) {
+            redisLiveStore.setStaticKey(channelId);
             try {
                 LiveResponseDTO dto = dtoMap.get(channelId);
 
@@ -51,15 +58,9 @@ public class LiveHandlerService {
 
                 LocalDateTime startedAt;
                 try {
-                    startedAt = LocalDateTime.parse(dto.getOpenDate(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                    startedAt = LocalDateTime.parse(dto.getOpenDate(), fmt);
                 } catch (DateTimeParseException e) {
                     log.warn("[handleStart] startedAt 파싱 실패: {}, channelId={}", dto.getOpenDate(), channelId);
-                    continue;
-                }
-
-                Duration delay = Duration.between(startedAt, LocalDateTime.now());
-                if (delay.toMinutes() >= 5) {
-                    redisLiveStore.setStaticKey(channelId);
                     continue;
                 }
 
@@ -70,6 +71,11 @@ public class LiveHandlerService {
                         existing.resetEndedAt();
                         log.info("[handleStart] endedAt 복구 - sessionId={}, channelId={}", existing.getId(), channelId);
                     }
+                    continue;
+                }
+
+                Instant startInstant = startedAt.atZone(utc).toInstant();
+                if (Duration.between(startInstant, Instant.now()).toMinutes() >= maxDelayMin) {
                     continue;
                 }
 
@@ -85,7 +91,6 @@ public class LiveHandlerService {
                         && subscriptionService.hasSubscribersFor(EventType.TOPIC, channelId)) {
                     subscriptionService.detectTopicEvent(dto);
                 }
-                redisLiveStore.setStaticKey(channelId);
                 log.info("[handleStart] channelId = {}", channelId);
             } catch (Exception e) {
                 log.error("[handleStart] 예외 발생 - channelId = {}, error = {}", channelId, e.getMessage(), e);
@@ -178,8 +183,6 @@ public class LiveHandlerService {
     private String serialize(LiveResponseDTO dto) {
         try {
             return objectMapper.writeValueAsString(Map.of(
-                    "channelId", Optional.ofNullable(dto.getChannelId()).orElse(""),
-                    "openDate", Optional.ofNullable(dto.getOpenDate()).orElse(""),
                     "title", Optional.ofNullable(dto.getLiveTitle()).orElse(""),
                     "category", Optional.ofNullable(dto.getLiveCategory()).orElse(""),
                     "tags", dto.getTags() != null ? dto.getTags() : List.of()
