@@ -178,6 +178,20 @@ services:
       - app-network
     restart: always
 
+  redis-exporter:
+    image: bitnami/redis-exporter:1.52.0
+    container_name: redis-exporter
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+    ports:
+      - "9121:9121"
+    depends_on:
+      - redis
+    networks:
+      - monitoring-network
+    restart: always
+
 networks:
   app-network:
     driver: bridge
