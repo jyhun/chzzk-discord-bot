@@ -15,6 +15,9 @@ import org.springframework.http.*;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
@@ -129,10 +132,20 @@ public class ChatService {
                 streamEvent.updateChatCount(chatMessagesRequestDTO.getMessages().size());
                 streamEventRepository.save(streamEvent);
             } else {
-                throw new RuntimeException("GPT API 호출 실패: " + response.getStatusCode());
+                log.warn("❗GPT API 응답 오류 – 상태코드: {}", response.getStatusCode());
             }
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
+                log.warn("❗GPT API 호출 제한 (429 Too Many Requests): {}", e.getMessage());
+            } else {
+                log.warn("❗GPT API 클라이언트 오류 ({}): {}", e.getStatusCode(), e.getMessage());
+            }
+        } catch (HttpServerErrorException e) {
+            log.warn("❗GPT API 서버 오류 ({}): {}", e.getStatusCode(), e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.warn("❗GPT API 네트워크 오류 (RestTemplate 타임아웃 등): {}", e.getMessage());
         } catch (Exception e) {
-            throw new RuntimeException("GPT API 호출 중 오류 발생", e);
+            log.warn("❗GPT API 호출 중 예기치 못한 오류 발생", e);
         }
 
         notificationService.requestStreamHotNotification(streamEvent);

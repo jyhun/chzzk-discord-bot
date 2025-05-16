@@ -8,6 +8,7 @@ import com.streampulse.backend.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -47,16 +48,25 @@ public class NotificationService {
     }
 
     @LogExecution
+    @Async
     public void requestStreamStartNotification(String channelId, String streamerName) {
         String url = processorUrl + "/api/stream-start";
 
         Map<String, String> payload = new HashMap<>();
         payload.put("streamerId", channelId);
         payload.put("streamerName", streamerName);
-        restTemplate.postForEntity(url, payload, Void.class);
+
+
+        try {
+            restTemplate.postForEntity(url, payload, Void.class);
+        } catch (Exception e) {
+            log.warn("디스코드 알림 실패 – {}", e.getMessage());
+        }
+
     }
 
     @LogExecution
+    @Async
     public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
         String url = processorUrl + "/api/stream-end";
 
@@ -86,10 +96,16 @@ public class NotificationService {
         payload.put("averageViewerCount", averageViewerCount);
         payload.put("duration", durationStr);
 
-        restTemplate.postForEntity(url, payload, Void.class);
+        try {
+            restTemplate.postForEntity(url, payload, Void.class);
+        } catch (Exception e) {
+            log.warn("디스코드 알림 실패 – {}", e.getMessage());
+        }
+
     }
 
     @LogExecution
+    @Async
     public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         String url = processorUrl + "/api/stream-topic";
 
@@ -102,10 +118,16 @@ public class NotificationService {
         payload.put("category", dto.getLiveCategoryValue());
         payload.put("tags", dto.getTags());
 
-        restTemplate.postForEntity(url, payload, Void.class);
+        try {
+            restTemplate.postForEntity(url, payload, Void.class);
+        } catch (Exception e) {
+            log.warn("디스코드 알림 실패 – {}", e.getMessage());
+        }
+
     }
 
     @LogExecution
+    @Async
     public void requestStreamHotNotification(StreamEvent streamEvent) {
         String url = processorUrl + "/api/stream-hot";
 
@@ -160,8 +182,12 @@ public class NotificationService {
         payload.put("broadcastElapsedTime", durationStr);
         payload.put("viewerIncreaseRate", viewerIncreaseRate);
 
-        // 전송
-        restTemplate.postForEntity(url, payload, Void.class);
+        try {
+            restTemplate.postForEntity(url, payload, Void.class);
+        } catch (Exception e) {
+            log.warn("디스코드 알림 실패 – {}", e.getMessage());
+        }
+
     }
 
 

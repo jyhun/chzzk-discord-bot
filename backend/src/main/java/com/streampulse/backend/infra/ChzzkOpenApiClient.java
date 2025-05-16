@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Component
@@ -42,8 +44,16 @@ public class ChzzkOpenApiClient {
             return resp.getBody();
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
-                log.error("치지직 API 호출이 너무 많습니다 (429 Too Many Requests): {}", e.getMessage());
+                log.warn("❗치지직 API 호출 제한 (429): {}", e.getMessage());
+            } else {
+                log.warn("❗치지직 API 클라이언트 오류 ({}): {}", e.getStatusCode(), e.getMessage());
             }
+        } catch (HttpServerErrorException e) {
+            log.warn("❗치지직 API 서버 오류 ({}): {}", e.getStatusCode(), e.getMessage());
+        } catch (ResourceAccessException e) {
+            log.warn("❗치지직 API 네트워크 연결 실패: {}", e.getMessage());
+        } catch (Exception e) {
+            log.warn("❗치지직 API 호출 실패: {}", e.getMessage(), e);
         }
         return null;
     }
