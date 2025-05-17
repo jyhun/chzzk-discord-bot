@@ -1,5 +1,7 @@
 package com.streampulse.backend.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.streampulse.backend.aop.LogExecution;
 import com.streampulse.backend.dto.LiveResponseDTO;
 import com.streampulse.backend.dto.NotificationRequestDTO;
@@ -7,11 +9,9 @@ import com.streampulse.backend.entity.*;
 import com.streampulse.backend.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -23,18 +23,22 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-@Transactional
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final RestTemplate restTemplate;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
-    @Value("${processor.url}")
-    private String processorUrl;
+    private static final String PREFIX = "stream:notification:";
+    private static final String STREAM_START = PREFIX + "start";
+    private static final String STREAM_END = PREFIX + "end";
+    private static final String STREAM_TOPIC = PREFIX + "topic";
+    private static final String STREAM_HOT = PREFIX + "hot";
 
     @LogExecution
+    @Transactional
     public void saveNotification(NotificationRequestDTO notificationRequestDTO) {
         Notification notification = Notification.builder()
                 .eventType(notificationRequestDTO.getEventType())
@@ -48,67 +52,29 @@ public class NotificationService {
     }
 
     @LogExecution
-    @Async
     public void requestStreamStartNotification(String channelId, String streamerName) {
-        String url = processorUrl + "/api/stream-start";
-
-        Map<String, String> payload = new HashMap<>();
-        payload.put("streamerId", channelId);
-        payload.put("streamerName", streamerName);
-
-
-        try {
-            restTemplate.postForEntity(url, payload, Void.class);
-        } catch (Exception e) {
-            log.warn("디스코드 알림 실패 – {}", e.getMessage());
-        }
-
-    }
-
-    @LogExecution
-    @Async
-    public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
-        String url = processorUrl + "/api/stream-end";
-
-        String channelId = streamer.getChannelId();
-        String streamerName = streamer.getNickname();
-        int peakViewerCount = streamSession.getPeakViewerCount();
-        int averageViewerCount = streamSession.getAverageViewerCount();
-
-        LocalDateTime startedAt = streamSession.getStartedAt();
-        LocalDateTime endedAt = streamSession.getEndedAt();
-
-        Duration duration = Duration.between(startedAt, endedAt);
-        long hours = duration.toHours();
-        long minutes = duration.toMinutes() % 60;
-
-        String durationStr;
-        if (hours > 0) {
-            durationStr = String.format("%d시간 %d분", hours, minutes);
-        } else {
-            durationStr = String.format("%d분", minutes);
-        }
-
         Map<String, Object> payload = new HashMap<>();
         payload.put("streamerId", channelId);
         payload.put("streamerName", streamerName);
-        payload.put("peakViewerCount", peakViewerCount);
-        payload.put("averageViewerCount", averageViewerCount);
-        payload.put("duration", durationStr);
-
-        try {
-            restTemplate.postForEntity(url, payload, Void.class);
-        } catch (Exception e) {
-            log.warn("디스코드 알림 실패 – {}", e.getMessage());
-        }
-
+        pushToStream(STREAM_START, payload);
     }
 
     @LogExecution
-    @Async
-    public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
-        String url = processorUrl + "/api/stream-topic";
+    public void requestStreamEndNotification(Streamer streamer, StreamSession streamSession) {
+        String durationStr = getDurationStr(streamSession.getStartedAt(), streamSession.getEndedAt());
 
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("streamerId", streamer.getChannelId());
+        payload.put("streamerName", streamer.getNickname());
+        payload.put("peakViewerCount", streamSession.getPeakViewerCount());
+        payload.put("averageViewerCount", streamSession.getAverageViewerCount());
+        payload.put("duration", durationStr);
+
+        pushToStream(STREAM_END, payload);
+    }
+
+    @LogExecution
+    public void requestStreamTopicNotification(String streamerChannelId, String streamerName, String discordChannelId, List<String> matchedKeywords, LiveResponseDTO dto) {
         Map<String, Object> payload = new HashMap<>();
         payload.put("streamerId", streamerChannelId);
         payload.put("streamerName", streamerName);
@@ -118,77 +84,55 @@ public class NotificationService {
         payload.put("category", dto.getLiveCategoryValue());
         payload.put("tags", dto.getTags());
 
-        try {
-            restTemplate.postForEntity(url, payload, Void.class);
-        } catch (Exception e) {
-            log.warn("디스코드 알림 실패 – {}", e.getMessage());
-        }
-
+        pushToStream(STREAM_TOPIC, payload);
     }
 
     @LogExecution
-    @Async
     public void requestStreamHotNotification(StreamEvent streamEvent) {
-        String url = processorUrl + "/api/stream-hot";
-
-        // 한국 시간대로 시간대 설정
-        ZoneId seoulZoneId = ZoneId.of("Asia/Seoul");
-
-        // 데이터 추출
         StreamMetrics metrics = streamEvent.getStreamMetrics();
-        String channelId = metrics.getStreamSession().getStreamer().getChannelId();
-        String streamerUrl = "https://chzzk.naver.com/live/" + channelId;
-        String nickname = metrics.getStreamSession().getStreamer().getNickname();
-        String title = metrics.getTitle();
-        String category = metrics.getCategory();
-        int viewerCount = metrics.getViewerCount();
-        int averageViewerCount = metrics.getStreamSession().getStreamer().getAverageViewerCount();
-        String summary = streamEvent.getSummary();
+        StreamSession session = metrics.getStreamSession();
+        Streamer streamer = session.getStreamer();
 
-        // 감지 시각 (한국 시간)
-        ZonedDateTime detectedAtSeoul = streamEvent.getCreatedAt().atZone(seoulZoneId);
+        String durationStr = getDurationStr(session.getStartedAt(), streamEvent.getCreatedAt());
+        ZonedDateTime detectedAtSeoul = streamEvent.getCreatedAt().atZone(ZoneId.of("Asia/Seoul"));
         String formattedDate = detectedAtSeoul.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일 HH:mm"));
 
-        LocalDateTime startedAt = metrics.getStreamSession().getStartedAt();
-        LocalDateTime endedAt = streamEvent.getCreatedAt();
-
-        Duration duration = Duration.between(startedAt, endedAt);
-        long hours = duration.toHours();
-        long minutes = duration.toMinutes() % 60;
-
-        String durationStr;
-        if (hours > 0) {
-            durationStr = String.format("%d시간 %d분", hours, minutes);
-        } else {
-            durationStr = String.format("%d분", minutes);
+        float rate = 0;
+        if (streamer.getAverageViewerCount() > 0) {
+            rate = ((float) metrics.getViewerCount() / streamer.getAverageViewerCount()) * 100;
         }
 
-        // 평균 대비 증가율 계산 (0 division 방지)
-        float viewerIncreaseRate = 0;
-        if (averageViewerCount > 0) {
-            viewerIncreaseRate = ((float) viewerCount / averageViewerCount) * 100;
-        }
-
-        // Payload 구성
         Map<String, Object> payload = new HashMap<>();
-        payload.put("streamerId", channelId);
-        payload.put("streamerUrl", streamerUrl);
-        payload.put("nickname", nickname);
-        payload.put("title", title);
-        payload.put("category", category);
-        payload.put("viewerCount", viewerCount);
-        payload.put("summary", summary);
+        payload.put("streamerId", streamer.getChannelId());
+        payload.put("streamerUrl", "https://chzzk.naver.com/live/" + streamer.getChannelId());
+        payload.put("nickname", streamer.getNickname());
+        payload.put("title", metrics.getTitle());
+        payload.put("category", metrics.getCategory());
+        payload.put("viewerCount", metrics.getViewerCount());
+        payload.put("summary", streamEvent.getSummary());
         payload.put("formattedDate", formattedDate);
         payload.put("broadcastElapsedTime", durationStr);
-        payload.put("viewerIncreaseRate", viewerIncreaseRate);
+        payload.put("viewerIncreaseRate", rate);
 
-        try {
-            restTemplate.postForEntity(url, payload, Void.class);
-        } catch (Exception e) {
-            log.warn("디스코드 알림 실패 – {}", e.getMessage());
-        }
-
+        pushToStream(STREAM_HOT, payload);
     }
 
+    private String getDurationStr(LocalDateTime start, LocalDateTime end) {
+        Duration duration = Duration.between(start, end);
+        long hours = duration.toHours();
+        long minutes = duration.toMinutes() % 60;
+        return hours > 0 ? String.format("%d시간 %d분", hours, minutes) : String.format("%d분", minutes);
+    }
+
+    private void pushToStream(String streamKey, Map<String, ?> payload) {
+        try {
+            String json = objectMapper.writeValueAsString(payload);
+            redisTemplate.opsForStream().add(streamKey, Map.of("payload", json));
+        } catch (JsonProcessingException e) {
+            log.error("[RedisStream] 메시지 직렬화 실패 – key={}, 원인={}", streamKey, e.getMessage(), e);
+        } catch (Exception e) {
+            log.error("[RedisStream] 스트림 전송 실패 – key={}, 원인={}", streamKey, e.getMessage(), e);
+        }
+    }
 
 }

@@ -47,3 +47,6 @@ management:
 
 processor:
   url: ${PROCESSOR_BASE_URL}
+
+consumer:
+  id: ${CONSUMER_ID:processor-1}
