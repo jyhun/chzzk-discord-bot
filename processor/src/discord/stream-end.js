@@ -28,7 +28,7 @@ function createStreamEndRouter(client) {
         `👥 평균 시청자 수: ${averageViewerCount}명\n\n` +
         `${streamUrl}`;
 
-      for (const s of subscribers) {
+      const tasks = subscribers.map(async (s) => {
         try {
           const channel = await client.channels.fetch(s.discordChannelId);
           await channel.send(message);
@@ -38,7 +38,7 @@ function createStreamEndRouter(client) {
             eventType: 'END',
             receiverId: s.discordChannelId,
             success: true,
-            message: message
+            message
           });
         } catch (e) {
           console.error(`[END] ${s.discordChannelId} 전송 실패`, e.message);
@@ -50,7 +50,9 @@ function createStreamEndRouter(client) {
             message: e.message
           });
         }
-      }
+      });
+
+      await Promise.allSettled(tasks);
 
       res.json({ message: '알림 전송 완료' });
     } catch (e) {

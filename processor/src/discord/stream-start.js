@@ -17,18 +17,17 @@ function createStreamStartRouter(client) {
 
             const message = `[${streamerName}] 방송이 시작되었습니다\nhttps://chzzk.naver.com/live/${streamerId}`;
 
-            for (const s of subscribers) {
+            const tasks = subscribers.map(async (s) => {
                 try {
                     const channel = await client.channels.fetch(s.discordChannelId);
                     await channel.send(message);
                     console.info(`[START] ${s.discordChannelId} 전송 성공`);
 
-                
                     await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
                         eventType: 'START',
                         receiverId: s.discordChannelId,
                         success: true,
-                        message: message
+                        message
                     });
                 } catch (e) {
                     console.error(`[START] ${s.discordChannelId} 전송 실패`, e.message);
@@ -36,11 +35,13 @@ function createStreamStartRouter(client) {
                     await axios.post(process.env.BACKEND_BASE_URL + '/api/notifications', {
                         eventType: 'START',
                         receiverId: s.discordChannelId,
-                        success: false,                    
+                        success: false,
                         message: e.message
                     });
                 }
-            }
+            });
+
+            await Promise.allSettled(tasks);
 
             res.json({ message: '알림 전송 완료' });
         } catch (e) {
