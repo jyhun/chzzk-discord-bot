@@ -145,7 +145,7 @@ public class ChatService {
         } catch (ResourceAccessException e) {
             log.warn("❗GPT API 네트워크 오류 (RestTemplate 타임아웃 등): {}", e.getMessage());
         } catch (Exception e) {
-            log.warn("❗GPT API 호출 중 예기치 못한 오류 발생", e);
+            log.warn("❗GPT API 호출 중 예기치 못한 오류 발생: {}", e.getMessage());
         }
 
         notificationService.requestStreamHotNotification(streamEvent);

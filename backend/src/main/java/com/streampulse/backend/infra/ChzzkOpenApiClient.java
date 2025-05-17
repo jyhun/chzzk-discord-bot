@@ -45,8 +45,6 @@ public class ChzzkOpenApiClient {
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.TOO_MANY_REQUESTS) {
                 log.warn("❗치지직 API 호출 제한 (429): {}", e.getMessage());
-            } else {
-                log.warn("❗치지직 API 클라이언트 오류 ({}): {}", e.getStatusCode(), e.getMessage());
             }
         } catch (HttpServerErrorException e) {
             log.warn("❗치지직 API 서버 오류 ({}): {}", e.getStatusCode(), e.getMessage());
