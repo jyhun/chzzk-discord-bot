@@ -11,28 +11,6 @@
 
 ---
 
-## 사용 예시
-
-### 방송 시작 알림 (START)
-![start](./docs/screenshots/start.png)
-
-### 방송 종료 알림 (END)
-![end](./docs/screenshots/end.png)
-
-### 급상승 반응 감지 (HOT)
-![hot](./docs/screenshots/hot.png)
-
-### 키워드 포함 감지 (TOPIC)
-![topic](./docs/screenshots/topic.png)
-
-### 구독 해제 (UNSUBSCRIBE)
-![unsubscribe](./docs/screenshots/unsubscribe.png)
-
-### 구독 목록 조회 (SUBSCRIPTIONS)
-![subscriptions](./docs/screenshots/subscriptions.png)
-
----
-
 ## 사용 가능한 명령어
 
 ### `/subscribe` 구독 명령어
